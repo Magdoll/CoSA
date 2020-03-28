@@ -1,9 +1,9 @@
-Accession ID,Specimen source,Sequencing technology,Location,Continent,Country
-"EPI_ISL_111111","Alveolar Lavage Fluid","Unknown","Asia / China / Hubei / Wuhan","Asia","China"
-"EPI_ISL_222222","Unknown","Illumina","Asia / Vietnam / Thanh Hoa","Asia","Vietnam"
-"EPI_ISL_333333","NasoOropharyngeal Swab","Sanger","Asia / Iran / Tehran","Asia","Iran"
-"EPI_ISL_444444","Unknown","Unknown","Asia / China / Guangdong","Asia","China"
-"EPI_ISL_555555","Unknown","Sanger","Asia / Iran / Qom","Asia","Iran"
-"EPI_ISL_666666","Unknown","Illumina","Europe / United Kingdom / England","Europe","United Kingdom"
-"EPI_ISL_777777","NasoOropharyngeal Swab","Illumina","Europe / Finland","Europe","Finland"
-"EPI_ISL_888888","NasoOropharyngeal Swab","Illumina","Asia / China / Shanghai","Asia","China"
+Accession ID,Host,Specimen source,Sequencing technology,Location,Continent,Country
+"EPI_ISL_111111","Human","Alveolar Lavage Fluid","Unknown","Asia / China / Hubei / Wuhan","Asia","China"
+"EPI_ISL_222222","Human","Unknown","Illumina","Asia / Vietnam / Thanh Hoa","Asia","Vietnam"
+"EPI_ISL_333333","Human","NasoOropharyngeal Swab","Sanger","Asia / Iran / Tehran","Asia","Iran"
+"EPI_ISL_444444","Human","Unknown","Unknown","Asia / China / Guangdong","Asia","China"
+"EPI_ISL_555555","Human","Unknown","Sanger","Asia / Iran / Qom","Asia","Iran"
+"EPI_ISL_666666","Human","Unknown","Illumina","Europe / United Kingdom / England","Europe","United Kingdom"
+"EPI_ISL_777777","Human","NasoOropharyngeal Swab","Illumina","Europe / Finland","Europe","Finland"
+"EPI_ISL_888888","Human","NasoOropharyngeal Swab","Illumina","Asia / China / Shanghai","Asia","China"

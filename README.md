@@ -5,9 +5,11 @@ Last Updated: 03/27/2020 (v1.0.0)
 
 ## What is CoSA
 
-CoSA is a set of Python and R scripts for analyzing [GISAID](http://gisaid.org/) SARS-CoV-2 sequences. 
+CoSA is a set of Python and R scripts for analyzing SARS-CoV-2 sequences. 
 
-This repository only hosts the code and the meta-analysis from GISAID data. 
+For now, I'm only beginnig with [GISAID](http://gisaid.org/) data which hosts the largest number of submissions. I'm going to gradually look into adding other sources (ex: [NCBI GenBank](https://www.ncbi.nlm.nih.gov/genbank/sars-cov-2-seqs/)) and how to best combine multiple sources.
+
+This repository only hosts the code and the meta-analysis. 
 To reproduce the results, you will need to be a registered GISAID user and download the fasta sequences and metadata CSV yourself.
 
 ## CoSA Report for GISAID 2020-03-25

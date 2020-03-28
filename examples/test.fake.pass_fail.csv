@@ -1,0 +1,9 @@
+Accession ID,Specimen source,Sequencing technology,Location,Continent,Country,Length,GapCount,NCount,AmbBase,Pass1,Msg1
+"EPI_ISL_111111","Alveolar Lavage Fluid","Unknown","Asia / China / Hubei / Wuhan","Asia","China","29574","2","2","0","PASS","NA"
+"EPI_ISL_222222","Unknown","Illumina","Asia / Vietnam / Thanh Hoa","Asia","Vietnam","29363","2","2","0","PASS","NA"
+"EPI_ISL_333333","NasoOropharyngeal Swab","Sanger","Asia / Iran / Tehran","Asia","Iran","29903","4104","4911","9965","FAIL","Too many gaps"
+"EPI_ISL_444444","Unknown","Unknown","Asia / China / Guangdong","Asia","China","29902","0","0","0","PASS","NA"
+"EPI_ISL_555555","Unknown","Sanger","Asia / Iran / Qom","Asia","Iran","18266","0","0","0","FAIL","Too short"
+"EPI_ISL_666666","Unknown","Illumina","Europe / United Kingdom / England","Europe","United Kingdom","29854","0","0","0","PASS","NA"
+"EPI_ISL_777777","NasoOropharyngeal Swab","Illumina","Europe / Finland","Europe","Finland","29882","0","0","0","PASS","NA"
+"EPI_ISL_888888","NasoOropharyngeal Swab","Illumina","Asia / China / Shanghai","Asia","China","1088","0","0","0","FAIL","Too short"

@@ -19,3 +19,106 @@ The 2020-03-25 GISAID contains 1797 sequences, 1778 of which are human. All foll
 ![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Rplot.count_Ns.png?raw=true|width=400)
 
 ## CoSA HowTo
+
+* <a href="req">GISAID data requirements</a>
+* <a href="install">How to install CoSA</a>
+* <a href="filter">How to clean up metadata and filter low-quality sequences</a>
+* <a href="report">How to produce the report PDF</a>
+
+<a name="req"/>
+
+### GISAID data requirements
+
+After obtaining a [GISAID](http://gisaid.org/) account, you will need to 
+download the fasta sequences and prepare a comma-separated metadata CSV file.
+
+The fasta sequence IDs need to be in the format like the following:
+```
+EPI_ISL_402119|hCoV-19/Wuhan/IVDC-HB-01/2019
+EPI_ISL_402120|hCoV-19/Wuhan/IVDC-HB-04/2020
+EPI_ISL_402121|hCoV-19/Wuhan/IVDC-HB-05/2019
+EPI_ISL_402123|hCoV-19/Wuhan/IPBCAMS-WH-01/2019
+```
+
+The metadata CSV needs to be comma-separated, with at least the following columns:
+```
+Accession ID
+Host
+Specimen source
+Sequencing technology
+Location
+```
+
+<a name="install"/>
+
+### How to install CoSA
+
+The prerequisites are:
+* Python 3.7
+* [BioPython](https://biopython.org/)
+* [R](https://www.r-project.org/), required only if you are generating the report figures
+
+To install, clone the repo and install:
+
+```
+$ git clone https://github.com/Magdoll/CoSA.git
+$ cd CoSA
+$ python setup.py build
+$ python setup.py install
+```
+
+<a name="filter"/>
+
+### How to clean up metadata and filter low-quality sequences
+
+**(1) Clean up metadata CSV**
+
+Clean up the metadata CSV by running the script:
+```
+clean_up_metadata.py [metadata_csv]
+```
+
+which produces the cleaned output with the suffix `.modified.csv`.
+
+**(2) Filter low quality sequences**
+
+```
+filter_gappedshort.py 
+usage: [-m METADATA] [--min_length MIN_LENGTH] [--max_gaps MAX_GAPS]
+       [--max_amb MAX_AMB]
+       fasta_filename
+
+positional arguments:
+  fasta_filename        Input fasta filename
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -m METADATA, --metadata METADATA
+                        Metadata CSV file (optional)
+  --min_length MIN_LENGTH
+                        Minimum sequence length (default: 28000)
+  --max_gaps MAX_GAPS   Maximum stretches of 'N' gaps (default: 2)
+  --max_amb MAX_AMB     Maximum number of ambiguous bases (default: 10)
+```
+
+For example, after running the two scripts on the fake dataset:
+
+```
+$ cd examples/
+$ clean_up_metadata.py test.metadata.csv 
+Output written to: test.metadata.modified.csv
+$ filter_gappedshort.py test.fake.fasta -m test.metadata.modified.csv 
+Output written to: test.fake.pass.fasta test.fake.fail.fasta test.fake.pass_fail.csv
+``` 
+
+The output csv file will contain additional columns that mark the sequences as FAIL/PASS.
+
+<a name="report"/>
+ 
+### How to produce the report PDF
+
+Once you have the `.metadata.csv` or better, the `.pass_fail.csv`, run the R script to generate the report.
+
+```
+$ Rscript <path_to_CoSA>/R/summarize_metadata.R test.fake.pass_fail.csv
+```

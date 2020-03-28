@@ -42,7 +42,7 @@ Below, the red arrows mark locations where there are consistent (more than 10+ s
 After obtaining a [GISAID](http://gisaid.org/) account, you will need to 
 download the fasta sequences and prepare a comma-separated metadata CSV file.
 
-The fasta sequence IDs need to be in the format like the following:
+The fasta sequence IDs need to be in the format like the following (I'll add support for non-GISAID data later):
 ```
 EPI_ISL_402119|hCoV-19/Wuhan/IVDC-HB-01/2019
 EPI_ISL_402120|hCoV-19/Wuhan/IVDC-HB-04/2020

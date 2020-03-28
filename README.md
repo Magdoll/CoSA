@@ -16,7 +16,7 @@ To reproduce the results, you will need to be a registered GISAID user and downl
 
 The 2020-03-25 GISAID contains 1797 sequences, 1778 of which are human. All following analysis are done based on the human sequences.
 
-![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Rplot.count_Ns.png?raw=true|width=400)
+![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-03-27%2019.11.15.png?raw=true)
 
 ## CoSA HowTo
 

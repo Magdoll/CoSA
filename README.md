@@ -31,11 +31,11 @@ likely due to the same set of primer designs that fail to cover these regions?
 
 ## CoSA HowTo
 
-* <a href="req">GISAID data requirements</a>
-* <a href="install">How to install CoSA</a>
-* <a href="filter">How to clean up metadata and filter low-quality sequences</a>
-* <a href="report">How to produce the report PDF</a>
-* <a href="ncbi">Fetching NCBI sequences</a>
+* <a href="#req">GISAID data requirements</a>
+* <a href="#install">How to install CoSA</a>
+* <a href="#filter">How to clean up metadata and filter low-quality sequences</a>
+* <a href="#report">How to produce the report PDF</a>
+* <a href="#ncbi">Fetching NCBI sequences</a>
 
 <a name="req"/>
 

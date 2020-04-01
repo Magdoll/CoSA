@@ -20,6 +20,14 @@ The 2020-03-25 GISAID contains 1797 sequences, 1778 of which are human. All foll
 
 ![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-03-27%2019.11.15.png?raw=true)
 
+![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-03-28%2005.59.45.png?raw=true)
+
+
+Below, the red arrows mark locations where there are consistent (more than 10+ sequences) stretches of "N"s, likely due to the same set of primer designs that fail to cover these regions?
+
+![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-03-28%2006.04.33.png?raw=true)
+
+
 ## CoSA HowTo
 
 * <a href="req">GISAID data requirements</a>
@@ -34,7 +42,7 @@ The 2020-03-25 GISAID contains 1797 sequences, 1778 of which are human. All foll
 After obtaining a [GISAID](http://gisaid.org/) account, you will need to 
 download the fasta sequences and prepare a comma-separated metadata CSV file.
 
-The fasta sequence IDs need to be in the format like the following:
+The fasta sequence IDs need to be in the format like the following (I'll add support for non-GISAID data later):
 ```
 EPI_ISL_402119|hCoV-19/Wuhan/IVDC-HB-01/2019
 EPI_ISL_402120|hCoV-19/Wuhan/IVDC-HB-04/2020

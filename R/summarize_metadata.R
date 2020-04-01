@@ -9,6 +9,12 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 csv.file <- args[1]
+flag.by_tech <- FALSE;
+if (length(args)>=2) {
+  if (args[2]=='--bytech') {
+    flag.by_tech <- TRUE;
+  }
+}
 
 report.file <- "gisaid_metadata_report.pdf"
 #report.figdir <- "gisaid_figures"
@@ -67,10 +73,7 @@ if (all(FAIL_PASS_FIELDS %in% colnames(x))) {
   x$Msg1 <- as.character(x$Msg1)
   x[is.na(x$Msg1),"Msg1"] <- "PASS"
   x$Status=x$Msg1
-  x[x$Status=='Too many ambiguous bases', "Status"] <- "10+ ambiguous bases"
-  x[x$Status=='Too many gaps', "Status"] <- "2+ stretches of 'N's"
-  x[x$Status=='Too short', "Status"] <- "Less than 28kb"
-  p.passfail <- ggplot(x, aes(x=Status, fill=Status)) + geom_bar() +
+  p.passfail <- ggplot(x, aes(x=Status, fill=Msg1)) + geom_bar() +
     xlab("") + ylab("Count") + labs(title="Sequence quality")
   #ggsave(file.path(report.figdir,'Rplot.pass_fail.png'), dpi=100, width=4.5, height=2.5)
 
@@ -99,8 +102,41 @@ if (all(FAIL_PASS_FIELDS %in% colnames(x))) {
 
 }
 
-###** Output plots
 
+if (flag.by_tech) {
+  # ---------------
+  # summarize sequencing technology
+  # ---------------
+  ggplot(x, aes(Sequencing.technology, fill=Sequencing.technology)) + geom_bar() + xlab("") + ylab("") + labs(title="Sequencing Technology") + theme(legend.position='none')
+  ggsave('Rplot.seq_tech.png', dpi=200, width=6, height=4)
+  # ---------------
+  # summarize high sites by tech
+  # ---------------
+  t <- x %>% group_by(Country, Sequencing.technology) %>% summarise(count=n())
+  ggplot(subset(t,count>=10), aes(x=Country, y=count, fill=Sequencing.technology)) + geom_bar(stat='identity') + coord_flip() + xlab("") + ylab("") + labs(title="Top sequencing countries")
+  ggsave('Rplot.seq_tech_by_top_country.png', width=6, height=4, dpi=200)
+
+  t2 <- x %>% group_by(Country) %>% summarise(count=n())
+  ggplot(subset(t,count>=10), aes(x=Country, y=count)) + geom_bar(stat='identity') + coord_flip() + xlab("") + ylab("") + labs(title="Top sequencing countries")
+  ggsave('Rplot.top_country.png', width=6, height=4, dpi=200)
+
+  if (all(FAIL_PASS_FIELDS %in% colnames(x))) {
+    p.passfail.by_tech <- ggplot(x, aes(x=Sequencing.technology, fill=Msg1)) + geom_bar() +
+      xlab("") + ylab("Count") + labs(title="Sequence quality") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="top")
+    ggsave('Rplot.pass_fail.by_tech.png', dpi=200, width=6, height=4)
+
+    p.Ns.by_tech <- ggplot(x, aes(Sequencing.technology, fill=NCountCat)) + geom_bar() + xlab("") + ylab("Count") +
+      labs(title="Number of 'N's in sequences")
+    ggsave('Rplot.count_Ns.by_tech.png', dpi=200, width=6, height=4)
+
+    p.segments.by_tech <- ggplot(x, aes(Sequencing.technology, fill=Segments)) + geom_bar() + xlab("") + ylab("Count") +
+      labs(title="Number of continuous (non-N) sequence segments")
+    ggsave('Rplot.count_segments.by_tech.png', dpi=200, width=6, height=4)
+  }
+}
+
+###** Output plots
 pdf(file=report.file, width = 6.5, height = 6.5)
 
 # cover

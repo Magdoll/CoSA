@@ -8,6 +8,7 @@ Filter step 1:
 import os, sys, pdb, re
 from csv import DictReader, DictWriter
 from Bio import SeqIO
+import pdb
 
 seqid_rex = re.compile('(EPI_ISL_\d+)|(\S+)')
 
@@ -70,10 +71,11 @@ def filter_gappedshort(fasta_filename, min_len, max_gap, max_amb, csv_filename=N
         csv_info = {}
         for r in csv_reader:
             m = seqid_rex.match(r['Accession ID'])
-            if m is None:
-                print("Excepted sequence ID format: EPI_ISL_xxxxxx but saw {0] instead. Abort!".format(r['Accession ID']))
-                sys.exit(-1)
-            csv_info[m.group(1)] = r
+            if m is None or m.group(1) is None:
+                _id = r['Accession ID']
+            else:
+                _id = m.group(1)
+            csv_info[_id] = r
         writer = DictWriter(f_csv, csv_reader.fieldnames + csv_fields[1:], delimiter=',')
     writer.writeheader()
 
@@ -104,10 +106,11 @@ def filter_gappedshort(fasta_filename, min_len, max_gap, max_amb, csv_filename=N
                 'Msg1': msg}
         if csv_filename is not None:
             m = seqid_rex.match(r.id)
-            if m is None:
-                print("Excepted sequence ID format: EPI_ISL_xxxxxx but saw {0] instead. Abort!".format(r['Accession ID']))
-                sys.exit(-1)
-            info.update(csv_info[m.group(1)])
+            if m is None or m.group(1) is None:
+                _id = r.id.split('|')[0]
+            else:
+                _id = m.group(1)
+            info.update(csv_info[_id])
 
         stuff = ['"'+str(info[field])+'"' for field in writer.fieldnames]
         f_csv.write(",".join(stuff)+ '\n')
@@ -124,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("fasta_filename", help="Input fasta filename")
     parser.add_argument("-m", "--metadata", help="Metadata CSV file (optional)")
     parser.add_argument("--min_length", default=28000, type=int, help="Minimum sequence length (default: 28000)")
-    parser.add_argument("--max_gaps", default=2, type=int, help="Maximum stretches of 'N' gaps (default: 2)")
+    parser.add_argument("--max_gaps", default=1, type=int, help="Maximum stretches of 'N' gaps (default: 1)")
     parser.add_argument("--max_amb", default=10, type=int, help="Maximum number of ambiguous bases (default: 10)")
 
     args = parser.parse_args()

@@ -1,32 +1,33 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 03/27/2020 (v1.0.0)   
+Last Updated: 04/01/2020 (v1.1.0)   
+
+## Updates
+
+2020.04.01 updated to  v1.1.0. Added fetching scripts for NCBI SRA.
+
 
 ## What is CoSA
 
-CoSA is a set of Python and R scripts for analyzing SARS-CoV-2 sequences. 
-
-For now, I'm only beginnig with [GISAID](http://gisaid.org/) data which hosts the largest number of submissions. I'm going to gradually look into adding other sources (ex: [NCBI GenBank](https://www.ncbi.nlm.nih.gov/genbank/sars-cov-2-seqs/)) and how to best combine multiple sources.
+CoSA is a set of Python and R scripts for analyzing SARS-CoV-2 sequences from [GISAID](http://gisaid.org/) and [NCBI](https://www.ncbi.nlm.nih.gov/genbank/sars-cov-2-seqs/#nucleotide-sequences). 
 
 This repository only hosts the code and the meta-analysis. 
-To reproduce the results, you will need to be a registered GISAID user and download the fasta sequences and metadata CSV yourself.
 
-## CoSA Report for GISAID 2020-03-25
+To reproduce the GISAID results, you will need to be a registered GISAID user and download the fasta sequences and metadata CSV yourself.
 
-[PDF](https://www.dropbox.com/s/e1rqbk826uepdhz/gisaid_metadata_report.pdf?dl=0) version of the GISAID 2020-03-25 SARS-CoV-2 meta-analysis report.
+## CoSA Report for GISAID 2020-03-31
 
-The 2020-03-25 GISAID contains 1797 sequences, 1778 of which are human. All following analysis are done based on the human sequences.
+[PDF](https://www.dropbox.com/s/is9flnbpn637ijx/gisaid_metadata_report.pdf?dl=0) version of the GISAID 2020-03-31 SARS-CoV-2 meta-analysis report.
 
-![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-03-27%2019.11.15.png?raw=true)
+The 2020-03-31 GISAID contains 2807 sequences, 2788 of which are human. 
 
-![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-03-28%2005.59.45.png?raw=true)
+![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Rplot.top_country.png)
 
+Below, the red arrows mark locations where there are consistent (more than 10+ sequences) stretches of "N"s, 
+likely due to the same set of primer designs that fail to cover these regions?
 
-Below, the red arrows mark locations where there are consistent (more than 10+ sequences) stretches of "N"s, likely due to the same set of primer designs that fail to cover these regions?
-
-![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-03-28%2006.04.33.png?raw=true)
-
+![](https://github.com/Magdoll/CoSA/blob/master/latest_report/Screenshot%202020-04-01%2011.15.39.png)
 
 ## CoSA HowTo
 
@@ -34,6 +35,7 @@ Below, the red arrows mark locations where there are consistent (more than 10+ s
 * <a href="install">How to install CoSA</a>
 * <a href="filter">How to clean up metadata and filter low-quality sequences</a>
 * <a href="report">How to produce the report PDF</a>
+* <a href="ncbi">Fetching NCBI sequences</a>
 
 <a name="req"/>
 
@@ -132,3 +134,22 @@ Once you have the `.metadata.csv` or better, the `.pass_fail.csv`, run the R scr
 ```
 $ Rscript <path_to_CoSA>/R/summarize_metadata.R test.fake.pass_fail.csv
 ```
+
+<a name="ncbi"/>
+
+### Fetching NCBI sequences
+
+You can use the following script to automatically fetch 
+[NCBI SARS-CoV-2 GenBank records](https://www.ncbi.nlm.nih.gov/genbank/sars-cov-2-seqs/#nucleotide-sequences). 
+
+The script will download the GenBank files and parse them into a fasta and 
+metadata CSV that is the same format as the GISAID CSV I'm using in the rest of the tutorial.
+
+```
+fetch_NCBI.py examples/ncbi-2020-03-31.seqids.list ncbi_gbs/ 2020-03-31.ncbi
+```
+
+This will download individual GenBank filies into the directory `ncbi_gbs` 
+(don't delete the directory, the script can auto-detect existing .gb files and skip re-downloading the next time)
+
+The output will be collated into `2020-03-31.ncbi.fasta` and `2020-03-31.ncbi.metadata.csv`.

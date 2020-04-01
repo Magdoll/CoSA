@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 __author__ = "etseng@pacb.com"
-version = "1.0.0"
+version = "1.1.0"
 
 
 setup(
@@ -19,5 +19,6 @@ setup(
         ],
     scripts = ['cosa/clean_up_metadata.py',
                'cosa/filter_gappedshort.py',
+			   'cosa/utils/fetch_NCBI.py',
                ],
     )

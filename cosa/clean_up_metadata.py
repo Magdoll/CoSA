@@ -2,6 +2,38 @@
 
 from csv import DictReader
 
+def assembly_method(x):
+    x = x.upper()
+    out = []
+    if x.find('CLC GENOMICS')>=0:
+        return 'CLC Genomics Workbench'
+    elif x.find('ARTIC')>=0:
+        return 'Artic pipeline'
+    elif x.find('BWA')>=0:
+        out.append('BWA')
+    elif x.find('SAMTOOLS')>=0:
+        out.append('Samtools')
+    elif x.find('SPADES')>=0:
+        out.append('SPAdes')
+    elif x.find('MEGAHIT')>=0:
+        out.append('MEGAHIT')
+    elif x.find('GENEIOUS')>=0:
+        out.append('Geneious ')
+    elif x.find('MINIMAP')>=0:
+        out.append('Minimap2')
+    elif x.find('IVAR')>=0:
+        out.append('ivar')
+    elif x.find('NANOPOLISH')>=0:
+        out.append('Nanopolish')
+    elif x.find('BOWTIE2')>=0:
+        out.append('Bowtie2')
+    else:
+        return "Unknown"
+
+    out.sort()
+    return ",".join(out)
+
+
 def specimen_source(x):
     x = x.replace('-', '')
     x = x.split()
@@ -55,7 +87,8 @@ if __name__ == "__main__":
             m = r[x]
             m = m.replace('"', '') # remove all double quotes
             if x=='Specimen source': m = specimen_source(r[x])
-            if x=='Sequencing technology': m = tech(r[x])
+            elif x=='Sequencing technology': m = tech(r[x])
+            elif x=='Assembly method': m = assembly_method(r[x])
             if m.startswith('"'): stuff.append(m)
             else: stuff.append('"'+m+'"')
         continent, country = location(r['Location'])

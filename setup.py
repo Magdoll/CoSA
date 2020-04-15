@@ -23,5 +23,6 @@ setup(
                'cosa/filter_gappedshort.py',
 			   'cosa/utils/fetch_NCBI.py',
                'cosa/pacbio/subsample_amplicons.py',
+               'cosa/pacbio/juliet_json_to_vcf.py',
                ],
     )

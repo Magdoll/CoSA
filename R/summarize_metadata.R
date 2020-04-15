@@ -107,17 +107,17 @@ if (flag.by_tech) {
   # ---------------
   # summarize sequencing technology
   # ---------------
-  ggplot(x, aes(Sequencing.technology, fill=Sequencing.technology)) + geom_bar() + xlab("") + ylab("") + labs(title="Sequencing Technology") + theme(legend.position='none')
+  p.by_tech.1 <- ggplot(x, aes(Sequencing.technology, fill=Sequencing.technology)) + geom_bar() + xlab("") + ylab("") + labs(title="Sequencing Technology") + theme(legend.position='none')
   ggsave('Rplot.seq_tech.png', dpi=200, width=6, height=4)
   # ---------------
   # summarize high sites by tech
   # ---------------
   t <- x %>% group_by(Country, Sequencing.technology) %>% summarise(count=n())
-  ggplot(subset(t,count>=10), aes(x=Country, y=count, fill=Sequencing.technology)) + geom_bar(stat='identity') + coord_flip() + xlab("") + ylab("") + labs(title="Top sequencing countries")
+  p.by_tech.2 <- ggplot(subset(t,count>=10), aes(x=Country, y=count, fill=Sequencing.technology)) + geom_bar(stat='identity') + coord_flip() + xlab("") + ylab("") + labs(title="Top sequencing countries")
   ggsave('Rplot.seq_tech_by_top_country.png', width=6, height=4, dpi=200)
 
   t2 <- x %>% group_by(Country) %>% summarise(count=n())
-  ggplot(subset(t,count>=10), aes(x=Country, y=count)) + geom_bar(stat='identity') + coord_flip() + xlab("") + ylab("") + labs(title="Top sequencing countries")
+  p.by_tech.3 <- ggplot(subset(t,count>=10), aes(x=Country, y=count)) + geom_bar(stat='identity') + coord_flip() + xlab("") + ylab("") + labs(title="Top sequencing countries")
   ggsave('Rplot.top_country.png', width=6, height=4, dpi=200)
 
   if (all(FAIL_PASS_FIELDS %in% colnames(x))) {
@@ -151,4 +151,16 @@ print(p.europe)
 print(p.na)
 
 grid.arrange(p.passfail, p.Ns, p.segments, ncol=1)
+
+if (flag.by_tech) {
+  print(p.by_tech.1)
+  print(p.by_tech.2)
+  print(p.by_tech.3)
+  if (all(FAIL_PASS_FIELDS %in% colnames(x))) {
+    print(p.passfail.by_tech)
+    print(p.Ns.by_tech)
+    print(p.segments.by_tech)
+  }
+}
+
 dev.off()

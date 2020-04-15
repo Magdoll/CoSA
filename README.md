@@ -1,16 +1,21 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 04/01/2020 (v1.1.0)   
+Last Updated: 04/15/2020 (v2.0.0)   
 
 ## Updates
 
-2020.04.01 updated to  v1.1.0. Added fetching scripts for NCBI SRA.
+2020.04.15 updated to v2.0.0. Added scripts to support SARS-CoV-2 using PacBio HiFi/CCS data. See [wiki](https://github.com/Magdoll/CoSA/wiki) for details.
+
+2020.04.01 updated to v1.1.0. Added fetching scripts for NCBI SRA.
 
 
 ## What is CoSA
 
-CoSA is a set of Python and R scripts for analyzing SARS-CoV-2 sequences from [GISAID](http://gisaid.org/) and [NCBI](https://www.ncbi.nlm.nih.gov/genbank/sars-cov-2-seqs/#nucleotide-sequences). 
+CoSA is a set of Python and R scripts for analyzing SARS-CoV-2 sequences from:
+
+* PacBio HiFi/CCS data.  See [wiki](https://github.com/Magdoll/CoSA/wiki) for details.
+* From [GISAID](http://gisaid.org/) and [NCBI](https://www.ncbi.nlm.nih.gov/genbank/sars-cov-2-seqs/#nucleotide-sequences). 
 
 This repository only hosts the code and the meta-analysis. 
 

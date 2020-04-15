@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os, sys
 from csv import DictReader
 # ex: primer name nCoV_2019_9_5p  nCoV_2019_9_alt2_3p

@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 04/15/2020 (v2.0.0)   
+Last Updated: 04/16/2020 (v2.1.0)   
 
 ## Updates
+
+2020.04.16 updated to v2.1.0. fixed samtools fraction issue in `subsample_amplicons.py`
 
 2020.04.15 updated to v2.0.0. Added scripts to support SARS-CoV-2 using PacBio HiFi/CCS data. See [wiki](https://github.com/Magdoll/CoSA/wiki) for details.
 

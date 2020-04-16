@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os, sys
+import random
 from csv import DictReader
 # ex: primer name nCoV_2019_9_5p  nCoV_2019_9_alt2_3p
 
@@ -19,9 +20,18 @@ def downsample_lima_bam(count_filename, size=1000):
             sys.exit(-1)
 
     for bam_prefix, counts in good_counts.items():
-        a = int(min(1., size/counts)*100)
-        s = ''
-        if a < 100: s = "-s {seed}.{fraction}".format(seed=0, fraction=a)
+        frac = size / counts
+        if frac >= 1:
+            s = ''
+        elif frac >= 0.01:  # frac 0.01-1.0
+            s = "-s {seed}.{fraction}".format(seed=random.randint(1,10),
+                                              fraction=int(frac*100))
+        else: # frac <= 0.01
+            s = "-s {seed}.00{fraction}".format(seed=random.randint(1,10),
+                                              fraction="{0:03.0f}".format(frac*100*1000))
+        #print(size, counts, frac, s)
+        #input()
+
         print("samtools view -b {s} {i}.bam | bamtools convert -format fastq > {i}.subsampled.fastq".format(\
                  s=s,
                  i=bam_prefix))

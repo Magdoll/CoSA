@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 __author__ = "etseng@pacb.com"
-version = "2.0.0"
+version = "2.1.0"
 
 
 setup(

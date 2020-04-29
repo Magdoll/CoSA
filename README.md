@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 04/16/2020 (v2.1.0)   
+Last Updated: 04/29/2020 (v2.2.0)
 
 ## Updates
+
+2020.04.29 updated to v2.2.0. added `calculate_coverage_and_missing_bases.py`.
 
 2020.04.16 updated to v2.1.0. fixed samtools fraction issue in `subsample_amplicons.py`
 

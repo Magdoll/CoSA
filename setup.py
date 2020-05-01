@@ -2,12 +2,12 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 __author__ = "etseng@pacb.com"
-version = "2.2.0"
+__version__ = "2.3.0"
 
 
 setup(
     name = 'CoSA',
-    version=version,
+    version=__version__,
     description='Coronavirus Sequence Analysis',
     author='Elizabeth Tseng',
     author_email='etseng@pacb.com',
@@ -23,6 +23,7 @@ setup(
                'cosa/filter_gappedshort.py',
 			   'cosa/utils/fetch_NCBI.py',
                'cosa/utils/calculate_coverage_and_missing_bases.py',
+               'cosa/utils/combine_demux_by_patient.py',
                'cosa/pacbio/subsample_amplicons.py',
                'cosa/pacbio/juliet_json_to_vcf.py',
                ],

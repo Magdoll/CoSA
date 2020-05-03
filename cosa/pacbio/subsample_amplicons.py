@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os, sys
+import math
 import random
 from csv import DictReader
 # ex: primer name nCoV_2019_9_5p  nCoV_2019_9_alt2_3p
@@ -23,12 +24,17 @@ def downsample_lima_bam(count_filename, size=1000):
         frac = size / counts
         if frac >= 1:
             s = ''
-        elif frac >= 0.01:  # frac 0.01-1.0
-            s = "-s {seed}.{fraction}".format(seed=random.randint(1,10),
-                                              fraction=int(frac*100))
-        else: # frac <= 0.01
-            s = "-s {seed}.00{fraction}".format(seed=random.randint(1,10),
-                                              fraction="{0:03.0f}".format(frac*100*1000))
+        else:
+            digit = -math.floor(math.log10(frac))
+            s = "-s {seed}.{pad}{fraction}".format(seed=random.randint(1,10),
+                                                   pad='0'*(digit-1),
+                                                   fraction="{0:.0f}".format(int(frac*(10**digit))))
+        #elif frac >= 0.01:  # frac 0.01-1.0
+        #    s = "-s {seed}.0{fraction}".format(seed=random.randint(1,10),
+        #                                      fraction=int(frac*100))
+        #elif frac >= 0.001: # frac <= 0.01
+        #    s = "-s {seed}.00{fraction}".format(seed=random.randint(1,10),
+        #                                      fraction="{0:03.0f}".format(frac*100*1000))
         #print(size, counts, frac, s)
         #input()
 

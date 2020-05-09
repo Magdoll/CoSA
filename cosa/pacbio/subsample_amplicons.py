@@ -5,11 +5,11 @@ import random
 from csv import DictReader
 # ex: primer name nCoV_2019_9_5p  nCoV_2019_9_alt2_3p
 
-def downsample_lima_bam(count_filename, size=1000):
+def downsample_lima_bam(count_filename, prefix, size=1000):
     good_counts = {}
     reader = DictReader(open(count_filename),delimiter='\t')
     for r in reader:
-        n = "output.{0}--{1}".format(r['IdxFirstNamed'],r['IdxCombinedNamed'])
+        n = "{0}.{1}--{2}".format(prefix,r['IdxFirstNamed'],r['IdxCombinedNamed'])
         #if r['IdxFirstNamed'].split('_')[2]==r['IdxCombinedNamed'].split('_')[2]:
         good_counts[n] = int(r['Counts'])
 
@@ -57,4 +57,4 @@ if __name__ == "__main__":
         print("Expected lima output file {0} but not found! Abort!".format(count_filename), file=sys.stderr)
         sys.exit(-1)
 
-    downsample_lima_bam(count_filename, args.subsample_size)
+    downsample_lima_bam(count_filename, args.lima_prefix, args.subsample_size)

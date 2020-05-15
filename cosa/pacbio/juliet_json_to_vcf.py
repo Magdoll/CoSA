@@ -41,22 +41,23 @@ def juliet_json_to_vcf(json_filename, vcf_filename, gene_pos_info, ref_name='NC_
                     _id = "{g}.{r}.{ind}".format(g=g['name'], r=v['ref_position'], ind=ind)
                     codon = cur['codon']
                     codon_offset = 0
-                    while ref_codon[codon_offset] == codon[codon_offset]: codon_offset += 1
-                    freq = "{0:.6f}".format(cur['frequency'])
 
-                    #pdb.set_trace()
-                    rec = vcf.model._Record(CHROM=ref_name,
-                                            POS=abs_pos+codon_offset,
-                                            ID=_id,
-                                            REF=ref_codon[codon_offset],
-                                            ALT=[vcf.model._Substitution(codon[codon_offset])],
-                                            QUAL='.', FILTER='PASS',
-                                            INFO={'AF': freq, 'DP': cov},
-                                            FORMAT="GT",
-                                            sample_indexes=None)
-                    samp_ft = vcf.model.make_calldata_tuple(['GT'])
-                    rec.samples.append(vcf.model._Call(rec, sample_name, samp_ft(*["0|1"])))
-                    f_vcf.write_record(rec)
+                    for codon_offset in range(3):
+                        if ref_codon[codon_offset] != codon[codon_offset]:
+                            freq = "{0:.6f}".format(cur['frequency'])
+                            #pdb.set_trace()
+                            rec = vcf.model._Record(CHROM=ref_name,
+                                                    POS=abs_pos+codon_offset,
+                                                    ID=_id,
+                                                    REF=ref_codon[codon_offset],
+                                                    ALT=[vcf.model._Substitution(codon[codon_offset])],
+                                                    QUAL='.', FILTER='PASS',
+                                                    INFO={'AF': freq, 'DP': cov},
+                                                    FORMAT="GT",
+                                                    sample_indexes=None)
+                            samp_ft = vcf.model.make_calldata_tuple(['GT'])
+                            rec.samples.append(vcf.model._Call(rec, sample_name, samp_ft(*["0|1"])))
+                            f_vcf.write_record(rec)
     f_vcf.close()
 
 

@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 __author__ = "etseng@pacb.com"
-__version__ = "2.4.0"
+__version__ = "2.5.0"
 
 
 setup(
@@ -26,5 +26,6 @@ setup(
                'cosa/utils/combine_demux_by_patient.py',
                'cosa/pacbio/subsample_amplicons.py',
                'cosa/pacbio/juliet_json_to_vcf.py',
+			   'cosa/pacbio/generate_cov_bed_from_lima_counts.py',
                ],
     )

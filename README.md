@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 05/03/2020 (v2.4.0)   
+Last Updated: 05/15/2020 (v2.5.0)   
 
 ## Updates
+
+2020.05.15 updated to v2.5.0. fixed `juliet_json_to_vcf.py` not handling multi-SNPs in a single codon.
 
 2020.05.03 updated to v2.4.0. fixed again samtools fraction issue in `subsample_amplicons.py`
 

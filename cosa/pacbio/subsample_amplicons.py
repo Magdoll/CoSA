@@ -5,13 +5,24 @@ import random
 from csv import DictReader
 # ex: primer name nCoV_2019_9_5p  nCoV_2019_9_alt2_3p
 
-def downsample_lima_bam(count_filename, prefix, size=1000):
+def downsample_lima_bam(count_filename, prefix, size=1000, valid_pairs_file=None):
+
+    valid_combo = set()
+    if valid_pairs_file is not None:
+        for line in open(valid_pairs_file):
+            n1, n2 = line.strip().split()
+            valid_combo.add((n1,n2))  # don't care which order, add both
+            valid_combo.add((n2,n1))
+
     good_counts = {}
     reader = DictReader(open(count_filename),delimiter='\t')
     for r in reader:
         n = "{0}.{1}--{2}".format(prefix,r['IdxFirstNamed'],r['IdxCombinedNamed'])
         #if r['IdxFirstNamed'].split('_')[2]==r['IdxCombinedNamed'].split('_')[2]:
-        good_counts[n] = int(r['Counts'])
+        if valid_pairs_file is None or (r['IdxFirstNamed'],r['IdxCombinedNamed']) in valid_combo:
+            good_counts[n] = int(r['Counts'])
+        elif valid_pairs_file is not None:
+            print("LOG: Ignoring invalid pairing {0}--{1} because not in whitelist".format(r['IdxFirstNamed'],r['IdxCombinedNamed']), file=sys.stderr)
 
     # sanity check all expected bams are there
     for k in good_counts:
@@ -47,6 +58,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("lima_prefix", help="lima output prefix")
     parser.add_argument("-s", "--subsample_size", type=int, default=1000, help="Number of reads to downsample to per amplicon (default: 1000)")
+    parser.add_argument("--valid_pairs_file", help="(optional) file indicating list of valid primer pairs to subsample from")
 
     args = parser.parse_args()
 
@@ -57,4 +69,8 @@ if __name__ == "__main__":
         print("Expected lima output file {0} but not found! Abort!".format(count_filename), file=sys.stderr)
         sys.exit(-1)
 
-    downsample_lima_bam(count_filename, args.lima_prefix, args.subsample_size)
+    if not os.path.exists(args.valid_pairs_file):
+        print("File {0} not found! Abort!".format(args.valid_pairs+file), file=sys.stderr)
+        sys.exit(-1)
+
+    downsample_lima_bam(count_filename, args.lima_prefix, args.subsample_size, args.valid_pairs_file)

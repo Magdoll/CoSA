@@ -58,7 +58,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("lima_prefix", help="lima output prefix")
     parser.add_argument("-s", "--subsample_size", type=int, default=1000, help="Number of reads to downsample to per amplicon (default: 1000)")
-    parser.add_argument("--valid_pairs_file", help="(optional) file indicating list of valid primer pairs to subsample from")
+    parser.add_argument("--valid_pairs_file", default=None, help="(optional) file indicating list of valid primer pairs to subsample from")
 
     args = parser.parse_args()
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         print("Expected lima output file {0} but not found! Abort!".format(count_filename), file=sys.stderr)
         sys.exit(-1)
 
-    if not os.path.exists(args.valid_pairs_file):
+    if args.valid_pairs_file is not None and not os.path.exists(args.valid_pairs_file):
         print("File {0} not found! Abort!".format(args.valid_pairs+file), file=sys.stderr)
         sys.exit(-1)
 

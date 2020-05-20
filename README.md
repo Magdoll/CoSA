@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 05/17/2020 (v2.6.1)
+Last Updated: 05/19/2020 (v2.7.0)
 
 ## Updates
+
+2020.05.19 updated to v2.7.0. `generate_cov_bed_from_lima_counts.py` now supports BEDPE format with `--bedpe` option.
 
 2020.05.16 updated to v2.6.1. `subsample_amplicons.py` now accepts optional whitelist for valid primer pairs.
 

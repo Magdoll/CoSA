@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 05/19/2020 (v2.7.0)
+Last Updated: 05/26/2020 (v2.8.0)
 
 ## Updates
+
+2020.05.26 updated to v2.8.0. `subsample_amplicons.py` added 1 more digit precision.
 
 2020.05.19 updated to v2.7.0. `generate_cov_bed_from_lima_counts.py` now supports BEDPE format with `--bedpe` option.
 

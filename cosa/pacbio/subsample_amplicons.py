@@ -39,7 +39,7 @@ def downsample_lima_bam(count_filename, prefix, size=1000, valid_pairs_file=None
             digit = -math.floor(math.log10(frac))
             s = "-s {seed}.{pad}{fraction}".format(seed=random.randint(1,10),
                                                    pad='0'*(digit-1),
-                                                   fraction="{0:.0f}".format(int(frac*(10**digit))))
+                                                   fraction="{0:.0f}".format(min(99,1+int(frac*(10**(digit+1))))))
         #elif frac >= 0.01:  # frac 0.01-1.0
         #    s = "-s {seed}.0{fraction}".format(seed=random.randint(1,10),
         #                                      fraction=int(frac*100))

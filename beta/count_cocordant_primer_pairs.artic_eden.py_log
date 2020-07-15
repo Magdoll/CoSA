@@ -1,0 +1,21 @@
+from csv import DictReader
+
+
+# eden primer names: SARS2_A5F_16847 SARS2_B1R_4429
+
+good = []
+bad = []
+reader = DictReader(open('output.lima.counts'),delimiter='\t')
+for r in reader:
+    p1, p2 = r['IdxFirstNamed'], r['IdxCombinedNamed']
+    if p1.startswith('SARS2'): # eden primers
+        name1, name2 = p1.split('_')[1][:2], p2.split('_')[1][:2]
+    else: # artic primers
+        name1, name2 = p1.split('_')[2], p2.split('_')[2]
+    if name1==name2:
+        good.append(int(r['Counts']))
+    else:
+        bad.append(int(r['Counts']))
+        
+print(len(good), "good, total", sum(good))
+print(len(bad), "bad, total", sum(bad))

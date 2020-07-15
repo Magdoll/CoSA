@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 05/26/2020 (v2.8.0)
+Last Updated: 07/15/2020 (v3.0.0)
 
 ## Updates
+
+2020.07.15 updated vo v3.0.0. added testing scripts for bcr 
 
 2020.05.26 updated to v2.8.0. `subsample_amplicons.py` added 1 more digit precision.
 

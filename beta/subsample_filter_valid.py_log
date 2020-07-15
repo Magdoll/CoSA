@@ -1,0 +1,17 @@
+import os, sys
+import random
+from csv import DictReader
+# ex: primer name nCoV_2019_9_5p  nCoV_2019_9_alt2_3p 
+good_counts = {}
+reader = DictReader(open('output.lima.counts'),delimiter='\t')
+for r in reader:
+    n = "output.{0}--{1}".format(r['IdxFirstNamed'],r['IdxCombinedNamed'])
+    #if r['IdxFirstNamed'].split('_')[2]==r['IdxCombinedNamed'].split('_')[2]:
+    good_counts[n] = int(r['Counts'])
+
+for bam_prefix, counts in good_counts.items():
+    a = min(1., 1000./counts)
+    print("samtools view -b -s {seed}.{fraction} {i}.bam | bamtools convert -format fastq > {i}.subsampled.fastq".format(\
+             seed=1, 
+             fraction=int(a*100), 
+             i=bam_prefix))

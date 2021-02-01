@@ -168,7 +168,14 @@ class MPileUpReader(object):
             but saw only {0}, abort! Line was: {1}".format(len(raw), line))
 
 
-def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4):
+def make_seq_from_list(seqlist, start0, end1):
+    seq = ''
+    for i in range(start0, end1):
+        if i in seqlist:
+            seq += seqlist[i]
+    return seq
+
+def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min_alt_freq=0.5):
     """
 
     :param ref_fasta: should be the Wuhan reference
@@ -176,6 +183,7 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4):
     :param vcf_input: VCF of where the variants are
     :param prefix: output prefix
     :param min_coverage: below this coverage bases will be 'N'
+    :param min_alt_freq: below this ALT frequency bases will use the reference instead
     :return:
     """
     #mpileup = prefix + '.bam.mpileup'
@@ -188,55 +196,68 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4):
     refseq = list(refseq)
 
     reader = MPileUpReader(mpileup)
-    recs = [r for r in reader]
-    cov = defaultdict(lambda: 0)
-    for r in recs: cov[r.pos] = r.cov
+    info_per_pos = {} # 0-based POS --> mpileup record
+    for r in reader: info_per_pos[r.pos] = r
 
-    newseq = dict(zip(range(len(refseq)), list(refseq)))
+    newseqlist = dict(zip(range(len(refseq)), list(refseq)))
     for pos0 in range(len(refseq)):
-        if cov[pos0]<min_coverage: newseq[pos0] = 'N'
+        if pos0 not in info_per_pos or info_per_pos[pos0].cov < min_coverage: newseqlist[pos0] = 'N'
     # make sure begin/ends are "N"s
-    for pos0 in range(min(cov)): newseq[pos0] = 'N'
-    for pos0 in range(max(cov),len(refseq)): newseq[pos0] = 'N'
+    for pos0 in range(min(info_per_pos)): newseqlist[pos0] = 'N'
+    for pos0 in range(max(info_per_pos),len(refseq)): newseqlist[pos0] = 'N'
 
     # now add in the variants
     vcf_reader = vcf.Reader(open(vcf_input))
+    vcf_writer = vcf.Writer(open(prefix+'.vcfcons.vcf', 'w'), vcf_reader)
     for v in vcf_reader:
         if len(v.ALT)>1:
             print("WARNING: more than 1 alt type for {0}! Using just the first alt for now.".format(prefix))
             #sys.exit(-1)
-        if v.is_snp:
-            newseq[v.POS-1] = str(v.ALT[0])
-        elif v.is_indel:
-            _ref, _alt = list(str(v.REF)), list(str(v.ALT[0]))
-            _d = len(_ref) - len(_alt)
-            if _d < 0: # is insertion
-                newseq[v.POS-1] = str(v.ALT[0])
-            else: # is deletion of size _d
-                for i in range(_d): del newseq[v.POS+i]
+
+        _ref, _alt = str(v.REF), str(v.ALT[0]) # we'll ignore multi variants for now
+        delta = len(_alt)-len(_ref)
+        if delta==0: t = 'SUB'
+        elif delta>0: t = 'INS'
+        else: t = 'DEL'
+
+        mrec = info_per_pos[v.POS-1]
+        if t=='SUB':
+            alt_count = mrec.counts[_alt] + mrec.counts[_alt.lower()]
+        elif t=='INS':
+            tmp = '+' + str(delta)
+            alt_count = mrec.counts[tmp+_alt[1:]] + mrec.counts[tmp+_alt[1:].lower()]
         else:
-            print("ERROR: Unknown variant type for pos {0} for {1}. Abort!".fomat(v.POS, prefix))
-            sys.exit(-1)
+            tmp = str(delta)  # delta is already -<something>, don't need to add '-' sign
+            alt_count = mrec.counts[tmp+_ref[1:]] + mrec.counts[tmp+_ref[1:].lower()]
 
-    newcons = ''
-    for pos0 in range(len(refseq)):
-        if pos0 in newseq: newcons += newseq[pos0]
+        alt_freq = alt_count * 1. / mrec.cov
+        if alt_freq < min_alt_freq:
+            print("WARNING: For {0}: Ignore variant {1}:{2}->{3} because alt freq is {4}.".format(prefix, v.POS, _ref, _alt, alt_freq))
+        else:
+            vcf_writer.write_record(v)
+            if t=='SUB':
+                newseqlist[v.POS-1] = str(v.ALT[0])
+            elif t=='INS': # is insertion
+                newseqlist[v.POS-1] = str(v.ALT[0])
+            else: # is deletion of size _d
+                for i in range(delta): del newseqlist[v.POS+i]
 
-    newseq = newcons
+    vcf_writer.close()
     f = open(output, 'w')
+    newseq = make_seq_from_list(newseqlist, 0, len(refseq))
     f.write(">" + newid + "\n" + newseq + '\n')
     f.close()
 
     f = open(output2, 'w')
     i = 0
-    while newseq[i]=='N': i += 1
-    while i < len(newseq)-1:
+    while newseqlist[i]=='N': i += 1
+    while i < len(newseqlist)-1:
         j = i + 1
-        while j < len(newseq) and newseq[j]!='N': j+=1
-        f.write(">{0}_frag{1}\n{2}\n".format(newid, i+1, newseq[i:j]))
+        while j < len(newseqlist) and newseqlist[j]!='N': j+=1
+        f.write(">{0}_frag{1}\n{2}\n".format(newid, i+1, make_seq_from_list(newseqlist, i, j)))
         i = j + 1
-        while i < len(newseq)-1 and newseq[i]=='N': i+=1
-    if j>i: f.write(">{0}_frag{1}\n{2}\n".format(newid, i+1, newseq[i:j]))
+        while i < len(newseqlist)-1 and newseqlist[i]=='N': i+=1
+    if j>i: f.write(">{0}_frag{1}\n{2}\n".format(newid, i+1, make_seq_from_list(newseqlist, i, j)))
     f.close()
 
 
@@ -247,8 +268,14 @@ if __name__ == "__main__":
     parser.add_argument("prefix", help="Sample prefix")
     parser.add_argument("-s", "--seq_rename_filename", default=None, help="Sequence ID rename file name. Optional.")
     parser.add_argument("-c", "--min_coverage", type=int, default=4, help="Minimum base coverage to call a base (default: 4)")
+    parser.add_argument("-f", "--min_alt_freq", type=float, default=0.5)
 
     args = parser.parse_args()
+
+    if args.min_alt_freq >= 1 or args.min_alt_freq <= 0:
+        print("--min_alt_freq must be a fraction between (0,1]. Got {0} instead. Abort!".format(args.min_alt_freq))
+        sys.exit(-1)
+
     mpileup = args.prefix + '.bam.mpileup'
     vcf_input = args.prefix + '.vcf'
 
@@ -276,4 +303,4 @@ if __name__ == "__main__":
     if newid is None:
         newid = args.prefix+'_VCFconsensus'
 
-    genVCFcons(args.ref_fasta, mpileup, vcf_input, args.prefix, newid, min_coverage=args.min_coverage)
+    genVCFcons(args.ref_fasta, mpileup, vcf_input, args.prefix, newid, min_coverage=args.min_coverage, min_alt_freq=args.min_alt_freq)

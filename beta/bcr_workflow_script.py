@@ -20,7 +20,7 @@ python bcrtcr_process_post_lima.py output.D702_F--D501_R.bam.fastq IgM -n -w 50 
 import os, sys
 from csv import DictReader
 
-VALID_REP_NAMES = {'IGA':50, 'IGG':50,'IGM':50,'IGK':50,'IGL':50,'IGGSUB':120}
+VALID_REP_NAMES = {'IGG':50,'IGM':50,'IGK':50,'IGL':50,'IGA':50,'IGGSUB':120}
 UMI_CUTOFFS = [2, 3, 5, 10]
 
 def read_metadata(filename):

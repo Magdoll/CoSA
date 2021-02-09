@@ -175,7 +175,7 @@ def make_seq_from_list(seqlist, start0, end1):
             seq += seqlist[i]
     return seq
 
-def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min_alt_freq=0.5):
+def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min_alt_freq=0.5, min_qual=100):
     """
 
     :param ref_fasta: should be the Wuhan reference
@@ -233,6 +233,8 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min
         alt_freq = alt_count * 1. / mrec.cov
         if alt_freq < min_alt_freq:
             print("WARNING: For {0}: Ignore variant {1}:{2}->{3} because alt freq is {4}.".format(prefix, v.POS, _ref, _alt, alt_freq))
+        elif v.QUAL < min_qual:
+            print("WARNING: For {0}: Ignore variant {1}:{2}->{3} because qual is {4}.".format(prefix, v.POS, _ref, _alt, v.QUAL))
         else:
             vcf_writer.write_record(v)
             if t=='SUB':
@@ -269,6 +271,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--seq_rename_filename", default=None, help="Sequence ID rename file name. Optional.")
     parser.add_argument("-c", "--min_coverage", type=int, default=4, help="Minimum base coverage to call a base (default: 4)")
     parser.add_argument("-f", "--min_alt_freq", type=float, default=0.5)
+    parser.add_argument("-q", "--min_qual", type=int, default=100, help="Minimum QUAL cutoff (default: 100)")
 
     args = parser.parse_args()
 
@@ -303,4 +306,4 @@ if __name__ == "__main__":
     if newid is None:
         newid = args.prefix+'_VCFconsensus'
 
-    genVCFcons(args.ref_fasta, mpileup, vcf_input, args.prefix, newid, min_coverage=args.min_coverage, min_alt_freq=args.min_alt_freq)
+    genVCFcons(args.ref_fasta, mpileup, vcf_input, args.prefix, newid, min_coverage=args.min_coverage, min_alt_freq=args.min_alt_freq, min_qual=args.min_qual)

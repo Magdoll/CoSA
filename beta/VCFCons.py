@@ -1,4 +1,4 @@
-#import pdb
+import pdb
 import os, sys, re
 from collections import defaultdict, Counter
 from Bio import SeqIO
@@ -29,6 +29,9 @@ acgn   mismatch on - strand
 $ end of read
 """
 
+if sys.version_info.major!=3:
+    print("This script requires Python 3")
+    sys.exit(-1)
 
 class MPileUpRecord(object):
     def __init__(self, chr, pos, ref, cov, readBase, baseQuals, alnQuals):
@@ -132,6 +135,8 @@ class MPileUpReader(object):
     def __iter__(self):
         return self
 
+    def next(self): return self.__next__()
+
     def __next__(self):
         cur = self.f.tell()
         line = self.f.readline()
@@ -175,7 +180,7 @@ def make_seq_from_list(seqlist, start0, end1):
             seq += seqlist[i]
     return seq
 
-def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min_alt_freq=0.5, min_qual=100):
+def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min_alt_freq=0.5, min_qual=100, use_vcf_info=False):
     """
 
     :param ref_fasta: should be the Wuhan reference
@@ -184,6 +189,7 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min
     :param prefix: output prefix
     :param min_coverage: below this coverage bases will be 'N'
     :param min_alt_freq: below this ALT frequency bases will use the reference instead
+    :param use_vcf_info: use VCF DP/AD info for read depth/support (used by pbaa outcome since we can't use pileup for that)
     :return:
     """
     #mpileup = prefix + '.bam.mpileup'
@@ -195,6 +201,8 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min
     refseq = str(ref.seq)
     refseq = list(refseq)
 
+    # even if use_vcf_info is True, we still need the pileup info to know when to put in 'N's
+    # (for pbaa VCF this does mean there's no relation between where we put 'N's w what pbaa calls)
     reader = MPileUpReader(mpileup)
     info_per_pos = {} # 0-based POS --> mpileup record
     for r in reader: info_per_pos[r.pos] = r
@@ -220,22 +228,48 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min
         elif delta>0: t = 'INS'
         else: t = 'DEL'
 
-        mrec = info_per_pos[v.POS-1]
-        if t=='SUB':
-            alt_count = mrec.counts[_alt] + mrec.counts[_alt.lower()]
-        elif t=='INS':
-            tmp = '+' + str(delta)
-            alt_count = mrec.counts[tmp+_alt[1:]] + mrec.counts[tmp+_alt[1:].lower()]
-        else:
-            tmp = str(delta)  # delta is already -<something>, don't need to add '-' sign
-            alt_count = mrec.counts[tmp+_ref[1:]] + mrec.counts[tmp+_ref[1:].lower()]
+        if use_vcf_info:  # use VCF info to get ALT freq based on DP (total) and AD (support), used by pbaa-converted VCF
+            x = v.samples[0]
+            if x.sample!=prefix:
+                print("WARNING: VCF sample name {0} does not match output prefix {1}!".format(x.sample, prefix))
 
-        alt_freq = alt_count * 1. / mrec.cov
-        if alt_freq < min_alt_freq:
-            print("WARNING: For {0}: Ignore variant {1}:{2}->{3} because alt freq is {4}.".format(prefix, v.POS, _ref, _alt, alt_freq))
-        elif v.QUAL < min_qual:
-            print("WARNING: For {0}: Ignore variant {1}:{2}->{3} because qual is {4}.".format(prefix, v.POS, _ref, _alt, v.QUAL))
+            # THIS IS A HACK FOR NOW until @jharting fixes stuff
+            GTs = x.data.GT.split('|')
+            if len(GTs) == 1:
+                if type(x.data.AD) is list:
+                    print("ERROR: {0}:{1} does not have the matching number of genotypes and counts!".format(prefix, v.POS))
+                    alt_freq = 1.
+                else:
+                    alt_freq = int(x.data.AD) * 1. / int(x.data.DP)
+            else: # multiple genotypes
+                if type(x.data.AD) is not list or len(x.data.AD)!=len(GTs):
+                    print("ERROR: {0}:{1} does not have the matching number of genotypes and counts! Set alt_freq to 1 for now!".format(prefix, v.POS))
+                    alt_freq = 1
+                else:
+                    alt_count = 0
+                    # for now, we use the ALT0 count only, which is genotype 1
+                    for gt,ad in zip(GTs, x.data.AD):
+                        if gt=='1': alt_count += ad
+                    alt_freq = alt_count * 1. / int(x.data.DP)
         else:
+            mrec = info_per_pos[v.POS-1]
+            if t=='SUB':
+                alt_count = mrec.counts[_alt] + mrec.counts[_alt.lower()]
+            elif t=='INS':
+                tmp = '+' + str(delta)
+                alt_count = mrec.counts[tmp+_alt[1:]] + mrec.counts[tmp+_alt[1:].lower()]
+            else:
+                tmp = str(delta)  # delta is already -<something>, don't need to add '-' sign
+                alt_count = mrec.counts[tmp+_ref[1:]] + mrec.counts[tmp+_ref[1:].lower()]
+            alt_freq = alt_count * 1. / mrec.cov
+
+        if alt_freq < min_alt_freq:
+            print("INFO: For {0}: Ignore variant {1}:{2}->{3} because alt freq is {4}.".format(prefix, v.POS, _ref, _alt, alt_freq))
+        elif v.QUAL is not None and v.QUAL < min_qual:
+            print("INFO: For {0}: Ignore variant {1}:{2}->{3} because qual is {4}.".format(prefix, v.POS, _ref, _alt, v.QUAL))
+        else:
+            if v.QUAL is None:
+                print("WARNING: QUAL field is empty for {0}:{1}. Ignoring QUAL filter.".format(prefix, v.POS))
             vcf_writer.write_record(v)
             if t=='SUB':
                 newseqlist[v.POS-1] = str(v.ALT[0])
@@ -272,6 +306,7 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--min_coverage", type=int, default=4, help="Minimum base coverage to call a base (default: 4)")
     parser.add_argument("-f", "--min_alt_freq", type=float, default=0.5)
     parser.add_argument("-q", "--min_qual", type=int, default=100, help="Minimum QUAL cutoff (default: 100)")
+    parser.add_argument("--use_vcf_info", action="store_true", default=False, help="Use VCF info for DP/AD (default: off)")
 
     args = parser.parse_args()
 
@@ -306,4 +341,8 @@ if __name__ == "__main__":
     if newid is None:
         newid = args.prefix+'_VCFconsensus'
 
-    genVCFcons(args.ref_fasta, mpileup, vcf_input, args.prefix, newid, min_coverage=args.min_coverage, min_alt_freq=args.min_alt_freq, min_qual=args.min_qual)
+    genVCFcons(args.ref_fasta, mpileup, vcf_input, args.prefix, newid,
+               min_coverage=args.min_coverage,
+               min_alt_freq=args.min_alt_freq,
+               min_qual=args.min_qual,
+               use_vcf_info=args.use_vcf_info)

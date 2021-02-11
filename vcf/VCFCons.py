@@ -180,7 +180,49 @@ def make_seq_from_list(seqlist, start0, end1):
             seq += seqlist[i]
     return seq
 
-def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min_alt_freq=0.5, min_qual=100, use_vcf_info=False):
+def get_alt_count_std(x, name):
+    if len(x.ALT) == 0: return 0
+    num_gt = len(x.ALT) + 1
+    if num_gt != len(x.data.AD):
+        print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
+        return int(x.data.DP)
+    else:
+        # for now, just return ALT0
+        return int(x.data.AD[1])
+
+def get_alt_count_clc(x, name):
+    if len(x.ALT) == 0: return 0
+    num_gt = len(x.ALT) + 1
+    if num_gt != len(x.data.CLCAD2):
+        print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
+        return int(x.data.DP)
+    else:
+        # for now, just return ALT0
+        return int(x.data.CLCAD2[1])
+
+
+def get_alt_count_pbaa(x, name):
+    GTs = x.gt_alleles  # ex:  ['1', '1'],  or ['0', '1'], etc
+    if len(GTs) == 1:
+        if type(x.data.AD) is list:
+            print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
+            return int(x.data.DP)
+        else:
+            return int(x.data.AD)
+    else: # multiple genotypes
+        if type(x.data.AD) is not list or len(x.data.AD)!=len(GTs):
+            print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
+            return int(x.data.DP)
+        else:
+            alt_count = 0
+            # for now, we use the ALT0 count only, which is genotype 1
+            for gt,ad in zip(GTs, x.data.AD):
+                if gt=='1': alt_count += ad
+            return alt_count
+
+def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
+               min_coverage=4, min_alt_freq=0.5, min_qual=100,
+               use_vcf_info=False, vcf_type=None):
     """
 
     :param ref_fasta: should be the Wuhan reference
@@ -190,6 +232,7 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min
     :param min_coverage: below this coverage bases will be 'N'
     :param min_alt_freq: below this ALT frequency bases will use the reference instead
     :param use_vcf_info: use VCF DP/AD info for read depth/support (used by pbaa outcome since we can't use pileup for that)
+    :param vcf_type: choices are pbaa, CLC, deepvariant (standard)
     :return:
     """
     #mpileup = prefix + '.bam.mpileup'
@@ -234,23 +277,14 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid, min_coverage=4, min
                 print("WARNING: VCF sample name {0} does not match output prefix {1}!".format(x.sample, prefix))
 
             # THIS IS A HACK FOR NOW until @jharting fixes stuff
-            GTs = x.data.GT.split('|')
-            if len(GTs) == 1:
-                if type(x.data.AD) is list:
-                    print("ERROR: {0}:{1} does not have the matching number of genotypes and counts!".format(prefix, v.POS))
-                    alt_freq = 1.
-                else:
-                    alt_freq = int(x.data.AD) * 1. / int(x.data.DP)
-            else: # multiple genotypes
-                if type(x.data.AD) is not list or len(x.data.AD)!=len(GTs):
-                    print("ERROR: {0}:{1} does not have the matching number of genotypes and counts! Set alt_freq to 1 for now!".format(prefix, v.POS))
-                    alt_freq = 1
-                else:
-                    alt_count = 0
-                    # for now, we use the ALT0 count only, which is genotype 1
-                    for gt,ad in zip(GTs, x.data.AD):
-                        if gt=='1': alt_count += ad
-                    alt_freq = alt_count * 1. / int(x.data.DP)
+            # DeepVariant is unphased, can be 0/1, 1/1, etc...
+            # pbaa is ?????
+            if vcf_type == 'pbaa':
+                alt_count = get_alt_count_pbaa(x, "{0}:{1}".format(prefix, v.POS))
+            elif vcf_type == 'CLC':
+                alt_count = get_alt_count_clc(x, "{0}:{1}".format(prefix, v.POS))
+            else:
+                alt_count = get_alt_count_std(x, "{0}:{1}".format(prefix, v.POS))
         else:
             mrec = info_per_pos[v.POS-1]
             if t=='SUB':
@@ -306,7 +340,8 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--min_coverage", type=int, default=4, help="Minimum base coverage to call a base (default: 4)")
     parser.add_argument("-f", "--min_alt_freq", type=float, default=0.5)
     parser.add_argument("-q", "--min_qual", type=int, default=100, help="Minimum QUAL cutoff (default: 100)")
-    parser.add_argument("--use_vcf_info", action="store_true", default=False, help="Use VCF info for DP/AD (default: off)")
+    parser.add_argument("--use_vcf_info", action="store_true", default=False, help="Use VCF info for read depth(DP) and allele depth (AD) info (default: off)")
+    parser.add_argument("--vcf_type", choices=['pbaa', 'deepvariant', 'CLC'], default=None, help="VCF format info, only used if --use_vcf_info is ON")
 
     args = parser.parse_args()
 
@@ -345,4 +380,5 @@ if __name__ == "__main__":
                min_coverage=args.min_coverage,
                min_alt_freq=args.min_alt_freq,
                min_qual=args.min_qual,
-               use_vcf_info=args.use_vcf_info)
+               use_vcf_info=args.use_vcf_info,
+               vcf_type=args.vcf_type)

@@ -180,9 +180,7 @@ def make_seq_from_list(seqlist, start0, end1):
             seq += seqlist[i]
     return seq
 
-def get_alt_count_std(x, name):
-    if len(x.ALT) == 0: return 0
-    num_gt = len(x.ALT) + 1
+def get_alt_count_std(num_gt, x, name):
     if num_gt != len(x.data.AD):
         print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
         return int(x.data.DP)
@@ -190,16 +188,13 @@ def get_alt_count_std(x, name):
         # for now, just return ALT0
         return int(x.data.AD[1])
 
-def get_alt_count_clc(x, name):
-    if len(x.ALT) == 0: return 0
-    num_gt = len(x.ALT) + 1
+def get_alt_count_clc(num_gt, x, name):
     if num_gt != len(x.data.CLCAD2):
         print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
         return int(x.data.DP)
     else:
         # for now, just return ALT0
         return int(x.data.CLCAD2[1])
-
 
 def get_alt_count_pbaa(x, name):
     GTs = x.gt_alleles  # ex:  ['1', '1'],  or ['0', '1'], etc
@@ -273,20 +268,28 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
 
         if use_vcf_info:  # use VCF info to get ALT freq based on DP (total) and AD (support), used by pbaa-converted VCF
             x = v.samples[0]
-            if x.sample!=prefix:
-                print("WARNING: VCF sample name {0} does not match output prefix {1}!".format(x.sample, prefix))
+            #if x.sample!=prefix:
+            #    print("WARNING: VCF sample name {0} does not match output prefix {1}!".format(x.sample, prefix))
 
             # THIS IS A HACK FOR NOW until @jharting fixes stuff
             # DeepVariant is unphased, can be 0/1, 1/1, etc...
             # pbaa is ?????
             if vcf_type == 'pbaa':
+                total_cov = x.data.DP
                 alt_count = get_alt_count_pbaa(x, "{0}:{1}".format(prefix, v.POS))
             elif vcf_type == 'CLC':
-                alt_count = get_alt_count_clc(x, "{0}:{1}".format(prefix, v.POS))
+                total_cov = x.data.DP
+                alt_count = get_alt_count_clc(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+            elif vcf_type == 'bcftools':
+                ##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+                total_cov = v.INFO['DP']
+                alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
             else:
-                alt_count = get_alt_count_std(x, "{0}:{1}".format(prefix, v.POS))
+                total_cov = x.data.DP
+                alt_count = get_alt_count_std(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
         else:
             mrec = info_per_pos[v.POS-1]
+            total_cov = mrec.cov
             if t=='SUB':
                 alt_count = mrec.counts[_alt] + mrec.counts[_alt.lower()]
             elif t=='INS':
@@ -295,7 +298,7 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
             else:
                 tmp = str(delta)  # delta is already -<something>, don't need to add '-' sign
                 alt_count = mrec.counts[tmp+_ref[1:]] + mrec.counts[tmp+_ref[1:].lower()]
-            alt_freq = alt_count * 1. / mrec.cov
+        alt_freq = alt_count * 1. / total_cov
 
         if alt_freq < min_alt_freq:
             print("INFO: For {0}: Ignore variant {1}:{2}->{3} because alt freq is {4}.".format(prefix, v.POS, _ref, _alt, alt_freq))
@@ -341,7 +344,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--min_alt_freq", type=float, default=0.5)
     parser.add_argument("-q", "--min_qual", type=int, default=100, help="Minimum QUAL cutoff (default: 100)")
     parser.add_argument("--use_vcf_info", action="store_true", default=False, help="Use VCF info for read depth(DP) and allele depth (AD) info (default: off)")
-    parser.add_argument("--vcf_type", choices=['pbaa', 'deepvariant', 'CLC'], default=None, help="VCF format info, only used if --use_vcf_info is ON")
+    parser.add_argument("--vcf_type", choices=['pbaa', 'deepvariant', 'CLC', 'bcftools'], default=None, help="VCF format info, only used if --use_vcf_info is ON")
 
     args = parser.parse_args()
 

@@ -1,3 +1,4 @@
+__version__ = '5.1.0'
 import pdb
 import os, sys, re
 from collections import defaultdict, Counter
@@ -215,12 +216,12 @@ def get_alt_count_pbaa(x, name):
                 if gt=='1': alt_count += ad
             return alt_count
 
-def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
+def genVCFcons(ref_fasta, mpileup, depth_file, vcf_input, prefix, newid,
                min_coverage=4, min_alt_freq=0.5, min_qual=100,
                use_vcf_info=False, vcf_type=None):
     """
-
     :param ref_fasta: should be the Wuhan reference
+    :param depth_file: <sample>.bam.depth of per base coverage
     :param mpileup: <sample>.bam.mpileup of aligning to Wuhan ref
     :param vcf_input: VCF of where the variants are
     :param prefix: output prefix
@@ -239,18 +240,24 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
     refseq = str(ref.seq)
     refseq = list(refseq)
 
-    # even if use_vcf_info is True, we still need the pileup info to know when to put in 'N's
-    # (for pbaa VCF this does mean there's no relation between where we put 'N's w what pbaa calls)
-    reader = MPileUpReader(mpileup)
-    info_per_pos = {} # 0-based POS --> mpileup record
-    for r in reader: info_per_pos[r.pos] = r
+    # NOTE: we are using samtools depth to get the per base coverage
+    # we use the pileup as extra info to get the supporting reads (even though most of the time now we'll be getting them from the VCF)
+    if use_vcf_info:
+        reader = MPileUpReader(mpileup)
+        info_per_pos = {} # 0-based POS --> mpileup record
+        for r in reader: info_per_pos[r.pos] = r
+
+    depth_per_pos = {} # 0-based POS --> read depth
+    for line in open(depth_file):
+        chrom, pos1, count = line.strip().split()
+        depth_per_pos[int(pos1)-1] = int(count)
 
     newseqlist = dict(zip(range(len(refseq)), list(refseq)))
     for pos0 in range(len(refseq)):
-        if pos0 not in info_per_pos or info_per_pos[pos0].cov < min_coverage: newseqlist[pos0] = 'N'
+        if pos0 not in depth_per_pos or depth_per_pos[pos0] < min_coverage: newseqlist[pos0] = 'N'
     # make sure begin/ends are "N"s
-    for pos0 in range(min(info_per_pos)): newseqlist[pos0] = 'N'
-    for pos0 in range(max(info_per_pos),len(refseq)): newseqlist[pos0] = 'N'
+    for pos0 in range(min(depth_per_pos)): newseqlist[pos0] = 'N'
+    for pos0 in range(max(depth_per_pos),len(refseq)): newseqlist[pos0] = 'N'
 
     # now add in the variants
     vcf_reader = vcf.Reader(open(vcf_input))
@@ -363,10 +370,15 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     mpileup = args.prefix + '.bam.mpileup'
+    depth_file = args.prefix + '.bam.depth'
     vcf_input = args.prefix + '.vcf'
 
     if not os.path.exists(mpileup):
         print("Cannot find input file {0}. Abort!".format(mpileup))
+        sys.exit(-1)
+
+    if not os.path.exists(depth_file):
+        print("Cannot find input file {0}. Abort!".format(depth_file))
         sys.exit(-1)
 
     if not os.path.exists(vcf_input):
@@ -389,7 +401,7 @@ if __name__ == "__main__":
     if newid is None:
         newid = args.prefix+'_VCFconsensus'
 
-    genVCFcons(args.ref_fasta, mpileup, vcf_input, args.prefix, newid,
+    genVCFcons(args.ref_fasta, mpileup, depth_file, vcf_input, args.prefix, newid,
                min_coverage=args.min_coverage,
                min_alt_freq=args.min_alt_freq,
                min_qual=args.min_qual,

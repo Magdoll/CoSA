@@ -261,7 +261,9 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
             #sys.exit(-1)
 
         _ref, _alt = str(v.REF), str(v.ALT[0]) # we'll ignore multi variants for now
-        delta = len(_alt)-len(_ref)
+        _altlen = len(_alt)
+        _reflen = len(_ref)
+        delta = _altlen - _reflen
         if delta==0: t = 'SUB'
         elif delta>0: t = 'INS'
         else: t = 'DEL'
@@ -291,7 +293,8 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
             mrec = info_per_pos[v.POS-1]
             total_cov = mrec.cov
             if t=='SUB':
-                alt_count = mrec.counts[_alt] + mrec.counts[_alt.lower()]
+                # sometimes VCFs will show consecutive subs, we will just use the first base for coverage info
+                alt_count = mrec.counts[_alt[0]] + mrec.counts[_alt[0].lower()]
             elif t=='INS':
                 tmp = '+' + str(delta)
                 alt_count = mrec.counts[tmp+_alt[1:]] + mrec.counts[tmp+_alt[1:].lower()]
@@ -300,7 +303,9 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
                 alt_count = mrec.counts[tmp+_ref[1:]] + mrec.counts[tmp+_ref[1:].lower()]
         alt_freq = alt_count * 1. / total_cov
 
-        if alt_freq < min_alt_freq:
+        if total_cov < min_coverage:
+            print("INFO: For {0}: Ignore variant {1}:{2}->{3} because total cov is {4}.".format(prefix, v.POS, _ref, _alt, total_cov))
+        elif alt_freq < min_alt_freq:
             print("INFO: For {0}: Ignore variant {1}:{2}->{3} because alt freq is {4}.".format(prefix, v.POS, _ref, _alt, alt_freq))
         elif v.QUAL is not None and v.QUAL < min_qual:
             print("INFO: For {0}: Ignore variant {1}:{2}->{3} because qual is {4}.".format(prefix, v.POS, _ref, _alt, v.QUAL))
@@ -309,11 +314,13 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
                 print("WARNING: QUAL field is empty for {0}:{1}. Ignoring QUAL filter.".format(prefix, v.POS))
             vcf_writer.write_record(v)
             if t=='SUB':
-                newseqlist[v.POS-1] = str(v.ALT[0])
+                # remember there could be consecutive subs
+                for cur in range(_altlen):
+                    newseqlist[v.POS-1+cur] = str(v.ALT[0])[cur]
             elif t=='INS': # is insertion
                 newseqlist[v.POS-1] = str(v.ALT[0])
             else: # is deletion of size _d
-                for i in range(delta): del newseqlist[v.POS+i]
+                for i in range(abs(delta)): del newseqlist[v.POS+i]
 
     vcf_writer.close()
     f = open(output, 'w')
@@ -325,11 +332,14 @@ def genVCFcons(ref_fasta, mpileup, vcf_input, prefix, newid,
     i = 0
     while newseqlist[i]=='N': i += 1
     while i < len(newseqlist)-1:
-        j = i + 1
-        while j < len(newseqlist) and newseqlist[j]!='N': j+=1
+        # i is the first position that is not N
+        j = i + 1  # j is now the second position that is not N in this segment
+        # progress j until encountering the first N again, note some positions could be deleted, so ok to skip over them
+        while j < len(newseqlist) and ((j not in newseqlist) or newseqlist[j]!='N'): j+=1
         f.write(">{0}_frag{1}\n{2}\n".format(newid, i+1, make_seq_from_list(newseqlist, i, j)))
-        i = j + 1
-        while i < len(newseqlist)-1 and newseqlist[i]=='N': i+=1
+        i = j + 1 # is now the second position that is N
+        # progress i until encountering the first non-N again
+        while i < len(newseqlist)-1 and ((i not in newseqlist) or newseqlist[i]=='N'): i+=1
     if j>i: f.write(">{0}_frag{1}\n{2}\n".format(newid, i+1, make_seq_from_list(newseqlist, i, j)))
     f.close()
 

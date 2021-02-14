@@ -1,6 +1,7 @@
 import os, sys, glob, vcf
 import pdb
 import phasing.io.SAMMPileUpReader as sp2
+from cosa.vcf import VCFCons
 
 #PATTERN = sys.argv[1] # "*.vcfcons.vcf
 #OUTFILE = sys.argv[2] # ../LCFall.bcftools_min_alt_freq_0.5.vcf_stats.txt
@@ -10,6 +11,7 @@ parser = ArgumentParser()
 parser.add_argument("PATTERN")
 parser.add_argument("OUTFILE")
 parser.add_argument("--use_vcf_info", action="store_true", default=False)
+parser.add_argument("--vcf_type", choices=['pbaa', 'deepvariant', 'CLC', 'bcftools'], default=None, help="VCF format info, only used if --use_vcf_info is ON")
 
 args = parser.parse_args()
 
@@ -36,23 +38,20 @@ for file in files:
 
         if args.use_vcf_info: # for pbaa-based VCF
             x = v.samples[0]
-            read_cov = int(x.data.DP)
-            GTs = x.data.GT.split('|')
-            if len(GTs) == 1:
-                if type(x.data.AD) is list:
-                    print("ERROR: {0}:{1} does not have the matching number of genotypes and counts!".format(prefix, v.POS))
-                    alt_count = int(x.data.DP)
-                else:
-                    alt_count = int(x.data.AD)
-            else: # multiple genotypes
-                if type(x.data.AD) is not list or len(x.data.AD)!=len(GTs):
-                    print("ERROR: {0}:{1} does not have the matching number of genotypes and counts! Set alt_freq to 1 for now!".format(prefix, v.POS))
-                    alt_count = int(x.data.DP)
-                else:
-                    alt_count = 0
-                    # for now, we use the ALT0 count only, which is genotype 1
-                    for gt,ad in zip(GTs, x.data.AD):
-                        if gt=='1': alt_count += ad
+
+            if args.vcf_type == 'pbaa':
+                read_cov = x.data.DP
+                alt_count = VCFCons.get_alt_count_pbaa(x, "{0}:{1}".format(prefix, v.POS))
+            elif args.vcf_type == 'CLC':
+                read_cov = x.data.DP
+                alt_count = VCFCons.get_alt_count_clc(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+            elif args.vcf_type == 'bcftools':
+                ##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+                read_cov = v.INFO['DP']
+                alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
+            else:
+                read_cov = x.data.DP
+                alt_count = VCFCons.get_alt_count_std(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
         else:
             mrec = pileup_info[v.POS - 1]
             read_cov = mrec.cov

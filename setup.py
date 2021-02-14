@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 __author__ = "etseng@pacb.com"
-__version__ = "4.0.0"
+__version__ = "5.0.0"
 
 
 setup(
@@ -12,10 +12,11 @@ setup(
     author='Elizabeth Tseng',
     author_email='etseng@pacb.com',
     zip_safe=False,
-    packages = ['cosa', 'cosa.io'],
+    packages = ['cosa', 'cosa.io', 'cosa.vcf'],
     package_dir = {'cosa': 'cosa',
                    'cosa.io': 'cosa/io',
-                   'cosa.pacbio': 'cosa/pacbio'},
+                   'cosa.pacbio': 'cosa/pacbio',
+                   'cosa.vcf': 'vcf'},
     install_requires=[
         'biopython',
         ],

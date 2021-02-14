@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 02.11.2020 (v4.0.0)
+Last Updated: 02.14.2020 (v5.0.0)
 
 ## Updates
+
+02.14.2020    v5.0.0 release. `VCFCons.py` important bug fix on propagating deletions into consensus fasta.
 
 02.11.2020    v4.0.0 release. `VCFCons.py` added.
 

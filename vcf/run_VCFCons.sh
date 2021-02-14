@@ -22,7 +22,7 @@ MIN_ALT_FREQ=0.5
 samtools index ${SAMPLE}.bam
 samtools mpileup --min-BQ 1 -f $REF -s ${SAMPLE}.bam > ${SAMPLE}.bam.mpileup
 
-python $PROG $REF $SAMPLE -c ${MIN_COVERAGE} -f ${MIN_ALT_FREQ}
+python $PROG $REF $SAMPLE -c ${MIN_COVERAGE} -f ${MIN_ALT_FREQ} --use_vcf_info --vcf_type deepvariant
 
 minimap2 -a $REF ${SAMPLE}.vcfcons.frag.fasta > ${SAMPLE}.vcfcons.frag.fasta.sam
 samtools view -bS ${SAMPLE}.vcfcons.frag.fasta.sam > ${SAMPLE}.vcfcons.frag.fasta.bam

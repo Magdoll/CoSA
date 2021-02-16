@@ -37,13 +37,12 @@ def main(parser):
     for consensusFa in args.consensusFastas:
         consensusType = parseHiLAAfastaName(consensusFa)
         for rec in pysam.FastxFile(consensusFa):
-            if consensusType == 'failed' and nameDict.get('cluster_freq',0) < args.minFrac:
-                continue #skip it
-
             aln = aligner(rec,skipFailed=(consensusType == 'failed')) 
             if aln is None:
                 continue #skip failed consensus if they do not map
             nameDict  = parseName(rec)
+            if consensusType == 'failed' and nameDict.get('cluster_freq',0) < args.minFrac:
+                continue #skip it
             bioSample = sMap(nameDict['barcode'])
             if args.progress:
                 print(f'Processing {bioSample}')

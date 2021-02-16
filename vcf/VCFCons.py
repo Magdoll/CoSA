@@ -1,4 +1,5 @@
-__version__ = '5.1.0'
+#!/usr/bin/env python
+__version__ = '5.2.0'
 import pdb
 import os, sys, re
 from collections import defaultdict, Counter

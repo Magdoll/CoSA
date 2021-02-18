@@ -4,7 +4,10 @@
 #Run this script: bash run_VCFCons.sh <sample>
 #
 #Expects to have the folllowing files:
-#  <sample>.bam
+#  <sample>.aligned.bam
+#
+# you can generate <sample>.aligned.bam using
+#  pbmm2 align --sort --preset HiFi per_patient.primer_trimed.bam > sample.aligned.bam
 #
 #Will output:
 #  <sample>.vcfcons.vcf
@@ -15,17 +18,18 @@
 SAMPLE=$1
 
 PROG=VCFCons.py
-REF=/pbi/dept/bifx/etseng/projects2020/SARS_Cov2/NC_045512.2.fasta
+REF=/data/SARS_Cov2/NC_045512.2.fasta
 MIN_COVERAGE=4
 MIN_ALT_FREQ=0.5
-SAMTOOLS=/home/UNIXHOME/etseng/software_downloads/samtools-1.11/samtools
+SAMTOOLS=/software/samtools-1.11/samtools
 
-samtools index ${SAMPLE}.bam
-samtools mpileup --min-BQ 1 -f $REF -s ${SAMPLE}.bam > ${SAMPLE}.bam.mpileup
-$SAMTOOLS depth -q 0 -Q 0 ${SAMPLE}.bam > ${SAMPLE}.bam.depth
+
+samtools index ${SAMPLE}.aligned.bam
+samtools mpileup --min-BQ 1 -f $REF -s ${SAMPLE}.aligned.bam > ${SAMPLE}.aligned.bam.mpileup
+$SAMTOOLS depth -q 0 -Q 0 ${SAMPLE}.aligned.bam > ${SAMPLE}.aligned.bam.depth
 
 # call variants using bcftools
-bcftools mpileup -f $REF ${SAMPLE}.bam | bcftools call -mv -Ov -o ${SAMPLE}.vcf
+bcftools mpileup -f $REF ${SAMPLE}.aligned.bam | bcftools call -mv -Ov -o ${SAMPLE}.vcf
 # filter variants & generate consensus using VCFCons
 $PROG $REF $SAMPLE -c ${MIN_COVERAGE} -f ${MIN_ALT_FREQ} --input_depth ${SAMPLE}.bam.depth --input_vcf ${SAMPLE}.vcf --vcf_type bcftools
 

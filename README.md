@@ -1,9 +1,11 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 02.16.2020 (v6.0.0)
+Last Updated: 02.17.2020 (v6.1.0)
 
 ## Updates
+
+02.17.2020    v6.1.0 release. Fixed `VCFCons.py` dealing with multiple ALT and proper INS if REF is more than 1nt.
 
 02.15.2020    v6.0.0 release. Adding `consensusVariants.py` and `pbaa2vcf.py` for pbaa support.
 

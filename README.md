@@ -3,6 +3,10 @@ Coronavirus (SARS-Cov-2) sequencing analysis
 
 Last Updated: 02.17.2020 (v6.1.0)
 
+[Stable version of CoSA under PacBio's GitHub](https://github.com/pacificbiosciences/CoSA)
+[Developing version of CoSA under Magdoll's GitHub](https://github.com/Magdoll/CoSA)
+
+
 ## Updates
 
 02.17.2020    v6.1.0 release. Fixed `VCFCons.py` dealing with multiple ALT and proper INS if REF is more than 1nt.
@@ -17,17 +21,14 @@ Last Updated: 02.17.2020 (v6.1.0)
 
 CoSA is a set of Python and R scripts for analyzing SARS-CoV-2 sequences from PacBio HiFi/CCS data.  
 
-See [wiki](https://github.com/Magdoll/CoSA/wiki) for details.
+[Stable version Wiki](https://github.com/PacificBiosciences/CoSA/wiki)
+
+[Developer version Wiki](https://github.com/Magdoll/CoSA/wiki)
 
 
 <a name="install"/>
 
 ### How to install CoSA
-
-The prerequisites are:
-* Python 3.7
-* [BioPython](https://biopython.org/)
-* [R](https://www.r-project.org/), required only if you are generating the report figures
 
 To install, clone the repo and install:
 

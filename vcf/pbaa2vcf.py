@@ -1,4 +1,4 @@
-__version__ = '7.2.0'
+__version__ = '7.3.0'
 import pysam,sys
 import numpy as np
 import pandas as pd

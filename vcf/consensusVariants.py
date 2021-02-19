@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+__version__ = '7.1.0'
 import re,pysam,os
 import mappy as mp
 import pandas as pd
@@ -127,7 +128,8 @@ class Aligner:
             self.kwargs['preset']  = preset
         else:
             #self.kwargs['scoring'] = (2,5,5,4,56,0)
-            self.kwargs['scoring'] = (1,2,2,1,32,0) # (A,B,o,e,O,E)
+            #self.kwargs['scoring'] = (1,2,2,1,32,0) # (A,B,o,e,O,E)
+            self.kwargs['scoring'] = (1,2,2,1,18,0) # (A,B,o,e,O,E)
         self._aligner = mp.Aligner(**self.kwargs)
     
     def __call__(self,rec,skipFailed=True):
@@ -155,7 +157,7 @@ def makeVarTable(aln,key):
 def addRefCalls(variants,alleles):
     #query to find ref-call consensus reads that span variants 
     qry = 'chrom==@ctg \
-         & alnStart <= @pos <= alnStop \
+         & alnStart < @pos <= alnStop \
          & uuid not in @vnts.index.get_level_values("uuid")'
     try:
         refCalls = pd.DataFrame([{'uuid': uuid,

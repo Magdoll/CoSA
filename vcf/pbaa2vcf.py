@@ -160,7 +160,7 @@ class VcfCreator:
 
             suppCount   = calls[SUPPORTFIELD].map(Counter).sum()
             countMap    = {altFunc(v).get('alt',alleles[0]):suppCount[v]
-                           for v in ['.','-gttt'] + calls.loc[alts.index.get_level_values('uuid')].VAR.to_list()
+                           for v in ['.'] + calls.loc[alts.index.get_level_values('uuid')].VAR.to_list()
                            if v in suppCount}
 
             #Genotype

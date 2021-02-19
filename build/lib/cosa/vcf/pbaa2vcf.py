@@ -1,7 +1,9 @@
+__version__ = '7.2.0'
 import pysam,sys
 import numpy as np
 import pandas as pd
 from operator import itemgetter
+from collections import Counter
 
 DEFAULTMINFREQ=0.05
 DEFAULTQUAL=200
@@ -53,7 +55,13 @@ class VcfCreator:
     def makeFilteredInput(self):
         filtInput = self.alleles.join(self.variants).reset_index('POS')
         #adjust deletion position to include prev base in ref
-        filtInput.POS -= filtInput.VAR.str.startswith('-').astype(int)
+        #also duplicate ref call for shifted dels
+        delPos = filtInput.VAR.str.startswith('-')
+        shiftRef = filtInput[filtInput.POS.isin(filtInput[delPos].POS.unique()) & (filtInput.VAR=='.')].copy()
+        filtInput.POS -= delPos.astype(int)
+        if len(shiftRef):
+            shiftRef.POS -= 1
+            filtInput = pd.concat([filtInput,shiftRef])        
         filtInput['nsupport'] = filtInput.apply(lambda r:r[SUPPORTFIELD].get(r['VAR'],0),axis=1)
         return filtInput.set_index('POS',append=True)
 
@@ -115,7 +123,8 @@ class VcfCreator:
 
     def new_record(self,loc,data):
         #alts df
-        alts        = pd.DataFrame.from_records(data.VAR.map(self._getAlt(*loc)),
+        altFunc     = self._getAlt(*loc)
+        alts        = pd.DataFrame.from_records(data.VAR.map(altFunc),
                                                 index=data.index).dropna()
         alleles     = [alts.loc[alts.ref.str.len().idxmax()].ref] + sorted(alts.alt.unique()) 
         #TODO fix this bad assumption
@@ -141,12 +150,18 @@ class VcfCreator:
             calls       = data.query(f'{self.sampleCol}==@sample').sort_values(['guide','cluster'])
             merged = False
             if self.mergeVars:
-                grouped = calls.groupby('VAR')
+                grouped = calls.groupby('VAR',as_index=False)
                 if (grouped.size() > 1).any(): #some merging
-                    calls = grouped.apply(self.mergeVar)
+                    calls = grouped.apply(self.mergeVar)\
+                                   .reset_index(level=0,drop=True)
                     merged = True
                 
             alleleMeta  = self.alleles.loc[calls.index.get_level_values('uuid')]\
+
+            suppCount   = calls[SUPPORTFIELD].map(Counter).sum()
+            countMap    = {altFunc(v).get('alt',alleles[0]):suppCount[v]
+                           for v in ['.','-gttt'] + calls.loc[alts.index.get_level_values('uuid')].VAR.to_list()
+                           if v in suppCount}
 
             #Genotype
             srec['GT']  = list(alts.reset_index(['CHR','POS'],drop=True)\
@@ -160,7 +175,8 @@ class VcfCreator:
             srec['AQ'] = list(alleleMeta.avg_quality) if not merged else None
             #allele depth
             try:
-                srec['AD'] = list(calls.nsupport)
+                #srec['AD'] = list(calls.nsupport)
+                srec['AD'] = [countMap.get(a,0) for a in alleles]
             except AttributeError:
                 print('WARNING: No HiFi support info.  Setting AD to consensus depth')
                 srec['AD'] = list(calls.numreads)   
@@ -181,6 +197,7 @@ class VcfCreator:
         d = dat.reset_index()
         firsts = {c:f(d[c]) for c in ['uuid','CHR','POS','VAR']}
         sums   = {c:d[c].sum() for c in ['numreads','nsupport']}
+        sums[SUPPORTFIELD] = dict(d[SUPPORTFIELD].map(Counter).sum())
         sums['guide'] = ';'.join(d.guide.unique())
         firsts.update(sums)
         return pd.DataFrame([firsts]).set_index(['uuid','CHR','POS'])

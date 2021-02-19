@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '7.0.0'
+__version__ = '7.2.0'
 #import pdb
 import os, sys
 from collections import Counter

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+__version__ = '7.2.0'
 import re,pysam,os
 import mappy as mp
 import pandas as pd
@@ -16,6 +17,7 @@ DEFAULTPREFIX='consensusVariants_summary'
 DATEFORMAT='%Y-%m-%d %H:%M:%S'
 ALLELETABLE='pbAA_consensus'
 VARIANTTABLE='SampleVariants'
+SUPPORTFIELD='supportReads'
 
 def main(parser):
     args = parser.parse_args()
@@ -36,6 +38,8 @@ def main(parser):
     print('Calling variants from consensus...')
     for consensusFa in args.consensusFastas:
         consensusType = parseHiLAAfastaName(consensusFa)
+        if args.progress:
+            print(f'Processing {consensusFa}')
         for rec in pysam.FastxFile(consensusFa):
             aln = aligner(rec,skipFailed=(consensusType == 'failed')) 
             if aln is None:
@@ -44,8 +48,6 @@ def main(parser):
             if consensusType == 'failed' and nameDict.get('cluster_freq',0) < args.minFrac:
                 continue #skip it
             bioSample = sMap(nameDict['barcode'])
-            if args.progress:
-                print(f'Processing {bioSample}')
             #tableKey  = getKey(rec.name,bioSample,args.runName)
             tableKey  = getKey(rec.name,bioSample,args.runName,os.path.abspath(consensusFa))
             nameDict.update({'uuid'         :tableKey,
@@ -91,15 +93,31 @@ def main(parser):
         alleles_out.to_csv(f'{args.prefix}_alleles.csv')
         variant_out.to_csv(f'{args.prefix}_variants.csv')        
     if args.sqlite3:
-        from sqlalchemy import create_engine
-        engine = create_engine(f'sqlite:///{args.sqlite3}', echo=False)
+        import time,sqlite3,sqlalchemy
+        engine = sqlalchemy.create_engine(f'sqlite:///{args.sqlite3}', echo=False)
         print(f'Importing to {args.sqlite3}')
         for pydf,sqldf in zip([alleles_out,variant_out],[ALLELETABLE,VARIANTTABLE]):
             pbaa = pydf.reset_index()\
                        .reindex(columns=list(TABLEMAP[sqldf].values()))
             pbaa.columns = list(TABLEMAP[sqldf].keys())
-            pbaa.set_index('uuid').to_sql(sqldf, con=engine, if_exists='append')        
-
+            #make sure support dtyep is "string"
+            if SUPPORTFIELD in pbaa.columns:
+                pbaa[SUPPORTFIELD] = pbaa[SUPPORTFIELD].astype(str)
+            tries = 0
+            maxtries = 20
+            while tries < maxtries:
+                try:
+                    pbaa.set_index('uuid').to_sql(sqldf, con=engine, if_exists='append')        
+                    break
+                #except sqlite3.OperationalError as e:
+                except sqlalchemy.exc.OperationalError as e:
+                    tries += 1
+                    print(f'WARNING: sqlite3 import error try #{tries}')
+                    if tries == maxtries:
+                        raise ConsensusVariants_Error(f'Unable to import {pydf.source.unique()} to {args.sqlite3}')
+                    else:
+                        time.sleep(2)
+                    
     return alleles_out,variant_out
 
 class Aligner:
@@ -110,7 +128,8 @@ class Aligner:
             self.kwargs['preset']  = preset
         else:
             #self.kwargs['scoring'] = (2,5,5,4,56,0)
-            self.kwargs['scoring'] = (1,2,2,1,32,0) # (A,B,o,e,O,E)
+            #self.kwargs['scoring'] = (1,2,2,1,32,0) # (A,B,o,e,O,E)
+            self.kwargs['scoring'] = (1,2,2,1,18,0) # (A,B,o,e,O,E)
         self._aligner = mp.Aligner(**self.kwargs)
     
     def __call__(self,rec,skipFailed=True):
@@ -138,7 +157,7 @@ def makeVarTable(aln,key):
 def addRefCalls(variants,alleles):
     #query to find ref-call consensus reads that span variants 
     qry = 'chrom==@ctg \
-         & alnStart <= @pos <= alnStop \
+         & alnStart < @pos <= alnStop \
          & uuid not in @vnts.index.get_level_values("uuid")'
     try:
         refCalls = pd.DataFrame([{'uuid': uuid,
@@ -219,7 +238,7 @@ def getKey(*args):
     return hashlib.md5(''.join(map(str,args)).encode()).hexdigest()
 
 class supportEngine:
-    FIELDNAME='supportReads'
+    FIELDNAME=SUPPORTFIELD
 
     def __init__(self,readInfo,hifiReads,aligner):
         self.readInfo  = self._loadInfo(readInfo)
@@ -344,15 +363,18 @@ TABLEMAP = {ALLELETABLE:      {'uuid'               :'uuid',
                                'filters'            :'filters',
                                'source'             :'source',
                                'clusterStatus'      :'clusterStatus',
+                               'chrom'              :'chrom',
                                'alnStart'           :'alnStart',
+                               'alnStop'            :'alnStop',
                                'csString'           :'csString',
                                'length'             :'length',
                                'status'             :'clusterStatus',
                                'datetime'           :'datetime'},
-            VARIANTTABLE:     {'uuid':'uuid',
-                               'CHR' :'CHR',
-                               'POS' :'POS',
-                               'VAR' :'VAR'}
+            VARIANTTABLE:     {'uuid'        :'uuid',
+                               'CHR'         :'CHR',
+                               'POS'         :'POS',
+                               'VAR'         :'VAR',
+                               SUPPORTFIELD  :SUPPORTFIELD}
            }
 
 READINFOCOLS = ['readName',

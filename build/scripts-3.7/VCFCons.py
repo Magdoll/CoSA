@@ -1,5 +1,5 @@
 #!/home/UNIXHOME/etseng/anacondaPy37/envs/anaCogentPy37/bin/python
-__version__ = '7.0.0'
+__version__ = '7.1.0'
 #import pdb
 import os, sys
 from collections import Counter

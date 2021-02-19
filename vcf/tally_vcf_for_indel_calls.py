@@ -34,7 +34,7 @@ for file in files:
 
         if args.vcf_type == 'pbaa':
             read_cov = x.data.DP
-            alt_count_dict = VCFCons.get_alt_count_pbaa(x, "{0}:{1}".format(prefix, v.POS))
+            alt_count_dict = VCFCons.get_alt_count_pbaa(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
             alt_count = alt_count_dict.most_common()[0][1]
         elif args.vcf_type == 'CLC':
             read_cov = x.data.DP

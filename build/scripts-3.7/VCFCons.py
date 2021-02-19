@@ -1,5 +1,5 @@
 #!/home/UNIXHOME/etseng/anacondaPy37/envs/anaCogentPy37/bin/python
-__version__ = '6.1.0'
+__version__ = '7.0.0'
 #import pdb
 import os, sys
 from collections import Counter
@@ -37,24 +37,21 @@ def get_alt_count_clc(num_gt, x, name):
             alt_count_dict[str(i)] += int(x.data.CLCAD2[i])
         return alt_count_dict
 
-def get_alt_count_pbaa(x, name):
-    GTs = x.gt_alleles  # ex:  ['1', '1'],  or ['0', '1'], etc
-    if len(GTs) == 1:
+def get_alt_count_pbaa(num_gt, x, name):
+    if num_gt == 1:
         if type(x.data.AD) is list:
             print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
             return Counter({'1': int(x.data.DP)})
         else:
             return Counter({'1':int(x.data.AD)})
     else: # multiple genotypes
-        if type(x.data.AD) is not list or len(x.data.AD)!=len(GTs):
+        if type(x.data.AD) is not list or len(x.data.AD)!=num_gt:
             print("ERROR: {0} does not have the matching number of genotypes and counts!".format(name))
             return Counter({'1': int(x.data.DP)})
         else:
             alt_count_dict = Counter()
-            # for now, we use the ALT0 count only, which is genotype 1
-            for gt,ad in zip(GTs, x.data.AD):
-                if str(gt)!='0': # ignore REF
-                    alt_count_dict[str(gt)] += int(ad)
+            for i in range(1,num_gt):
+                alt_count_dict[str(i)] += int(x.data.AD[i])
             return alt_count_dict
 
 def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
@@ -103,7 +100,7 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
         # pbaa is ?????
         if vcf_type == 'pbaa':
             total_cov = x.data.DP
-            alt_count_dict = get_alt_count_pbaa(x, "{0}:{1}".format(prefix, v.POS))
+            alt_count_dict = get_alt_count_pbaa(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
             alt_index, alt_count = alt_count_dict.most_common()[0]
         elif vcf_type == 'CLC':
             total_cov = x.data.DP

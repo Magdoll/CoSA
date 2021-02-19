@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 __version__ = '7.2.0'
 import re,pysam,os
 import mappy as mp

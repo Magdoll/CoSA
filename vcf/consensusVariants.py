@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import re,pysam,os
 import mappy as mp
 import pandas as pd

@@ -7,10 +7,10 @@ nextflow.enable.dsl=2
   Pipeline Processes (includes)
 -----------------------------------------------------------------------------*/
 
-included { ccs                      } from '../modules/ccs/main'
-included { lima                     } from '../modules/lima/main'
-included { combine_demux_by_patient } from '../modules/combine_demux_by_patient/main'
-
+include { ccs                      } from '../modules/ccs/main'
+include { lima                     } from '../modules/lima/main'
+include { combine_demux_by_patient } from '../modules/combine_demux_by_patient/main'
+include { bamtools_merge           } from '../modules/bamtools/merge/main'
 
 /*-----------------------------------------------------------------------------
   Pipeline Parameters
@@ -29,29 +29,48 @@ if (!params.outdir) {
 -----------------------------------------------------------------------------*/
 
 workflow {
+
     // [Channel] the input subreads BAM (eg. <movie>.subreads.bam or movie>..hifi_reads.bam)
     ch_in_subreads_bam = Channel.fromPath(params.subreads_bam)
+
+    // [Channel] the sample metadata.  Should contain:
+    //           "Sample", "BarcodeF", "BarcodeFName", "BarcodeR", "BarcodeRName"
+    ch_in_metadata = Channel
+        .fromPath(params.sample_metadata)
+        .splitCsv(header: true)
+
+    // [Channel] the barcode FASTA file, one entry per input barcode
+    ch_in_barcodes_fasta = ch_in_metadata
+        .collectFile(name: 'barcodes.fasta', newLine: true)
 
     // [Process] call the consensus reads from the subreads
     ccs(ch_in_subreads_bam)
 
     // [Process] demultiplex the CCS reads
-    lima(ccs.out.subreads_bam)
+    lima(ccs.out.subreads_bam, ch_in_barcodes_fasta)
+
+    // [Channel] build tuples of barcode key and BAM file
+    ch_lima_bams = lima.out.bams.map { bam ->
+        (bam.baseName.substring("demux.".length()), bam)
+    }
+
+    // [[Channel] transform the metadata to tuples of barcode key and sample
+    ch_in_lima_outputs = ch_in_metadata
+        .map { (sample, barcodeF, barcodeFName, barcodeR, barcodeRName) ->
+            ("${barcodeFName}--${barcodeRName}", sample)
+        }
+
+    // [[Channel] gather all BAMs for the same sample
+    ch_bams_by_sample = ch_in_lima_outputs
+        .join(ch_lima_bams)                          // join by barcode name key
+        .map { (key, sample, bam) -> (sample, bam) } // discard the key
+        .groupTuple()                                // collect all BAMs by sample name
 
     // [Process] combine into per-patient data
-    // TODO generate the tab-delimited data file
-    // TODO run combine_demux_by_patient
+    bamtools_merge(ch_bams_by_sample)
 
     // [Process] trim amplicon primers
     // TODO: support --neigbhors or --different
-    /*
-    lima -j 30 --split-bam-named \
-     --neighbors \
-     --ccs \
-     --min-score-lead 10 \
-     --min-score 80
-     ccs.bam amplicon_primers.fasta output.bam
-     */
 
      // [Process] variant calling
      // TODO: support parameterizign variant callers

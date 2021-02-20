@@ -1,7 +1,7 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 02.19.2020 (v7.3.0)
+Last Updated: 02.20.2020 (v8.0.0)
 
 [Stable version of CoSA under PacBio's GitHub](https://github.com/pacificbiosciences/CoSA)
 
@@ -11,6 +11,8 @@ Join the [COVID19 Google Group](https://groups.google.com/g/smrt_covid19) to sta
  
 
 ## Updates
+
+02.20.2020    v8.0.0 release. Added `.vcfcons.variants.csv` to `VCFCOns.py` output.
 
 02.19.2020    v7.3.0 release. `VCFCons.py` accepts the new pbaa VCF type that follows standard AD info. Minor fixes to pbaa->VCF scripts.
 

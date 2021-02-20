@@ -1,14 +1,13 @@
 #!/home/UNIXHOME/etseng/anacondaPy37/envs/anaCogentPy37/bin/python
-__version__ = '7.1.0'
+__version__ = '8.0.0'
 #import pdb
 import os, sys
 from collections import Counter
+from csv import DictWriter
 from Bio import SeqIO
 import vcf
 
-if sys.version_info.major!=3:
-    print("This script requires Python 3")
-    sys.exit(-1)
+VARIANT_FIELDS = ['Pos', 'Type', 'Length', 'Depth', 'AltCount']
 
 def make_seq_from_list(seqlist, start0, end1):
     seq = ''
@@ -92,6 +91,9 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
     tally_types = Counter() # SUB/INS/DEL --> count
     vcf_reader = vcf.Reader(open(vcf_input))
     vcf_writer = vcf.Writer(open(prefix+'.vcfcons.vcf', 'w'), vcf_reader)
+    f_variant = open(prefix+'.vcfcons.variants.csv', 'w')
+    variant_writer = DictWriter(f_variant, fieldnames=VARIANT_FIELDS, delimiter='\t')
+    variant_writer.writeheader()
     for v in vcf_reader:
         # deepvariant has this weird record of RefCalls, ignore them
         if vcf_type == 'deepvariant' and v.FILTER == ['RefCall']: continue
@@ -140,6 +142,11 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
             if v.QUAL is None:
                 print("WARNING: QUAL field is empty for {0}:{1}. Ignoring QUAL filter.".format(prefix, v.POS))
             vcf_writer.write_record(v)
+            variant_writer.writerow({'Pos': v.POS,
+                                     'Type': t,
+                                     'Length': abs(delta) if t != 'SUB' else 1,
+                                     'Depth': total_cov,
+                                     'AltCount': alt_count})
             tally_types[t] += 1
             if t=='SUB':
                 # remember there could be consecutive subs
@@ -154,6 +161,8 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
                 for i in range(abs(delta)): del newseqlist[v.POS+_reflen-2-i]
 
     vcf_writer.close()
+    f_variant.close()
+
     f = open(output_fasta, 'w')
     newseq = make_seq_from_list(newseqlist, 0, len(refseq))
     f.write(">" + newid + "\n" + newseq + '\n')

@@ -1,11 +1,14 @@
-#!/usr/bin/env python3
-__version__ = '7.2.0'
+#!/usr/bin/env python
+__version__ = '7.1.0'
 #import pdb
 import os, sys
 from collections import Counter
 from Bio import SeqIO
 import vcf
 
+if sys.version_info.major!=3:
+    print("This script requires Python 3")
+    sys.exit(-1)
 
 def make_seq_from_list(seqlist, start0, end1):
     seq = ''

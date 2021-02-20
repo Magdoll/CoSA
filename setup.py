@@ -2,7 +2,7 @@ from setuptools import setup, Extension, find_packages
 import sys
 
 __author__ = "etseng@pacb.com"
-__version__ = "6.0.0"
+__version__ = "7.2.0"
 
 
 setup(
@@ -28,6 +28,8 @@ setup(
                'cosa/pacbio/subsample_amplicons.py',
                'cosa/pacbio/juliet_json_to_vcf.py',
 			   'cosa/pacbio/generate_cov_bed_from_lima_counts.py',
-               'vcf/VCFCons.py'
+               'vcf/VCFCons.py',
+			   'vcf/consensusVariants.py',
+			   'vcf/pbaa2vcf.py'
                ],
     )

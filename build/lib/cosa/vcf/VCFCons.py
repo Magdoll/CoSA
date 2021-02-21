@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = '8.0.0'
+__version__ = '8.1.0'
 #import pdb
 import os, sys
 from collections import Counter
@@ -156,9 +156,18 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
                 newseqlist[v.POS-1] = str(_alt)
                 # in case the REF is not a single base, take care of it
                 for extra_i in range(_reflen-1):
-                    del newseqlist[v.POS+extra_i]
+                    curpos = v.POS+extra_i
+                    if curpos not in newseqlist:
+                        print("WARNING: {0}:{1} is already deleted! Check VCF format!".format(prefix, curpos))
+                    else:
+                        del newseqlist[curpos]
             else: # is deletion of size _d
-                for i in range(abs(delta)): del newseqlist[v.POS+_reflen-2-i]
+                for i in range(abs(delta)):
+                    curpos = v.POS+_reflen-2-i
+                    if curpos not in newseqlist:
+                        print("WARNING: {0}:{1} is already deleted! Check VCF format!".format(prefix, curpos))
+                    else:
+                        del newseqlist[curpos]
 
     vcf_writer.close()
     f_variant.close()
@@ -170,7 +179,8 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
 
     f = open(output_frag_fasta, 'w')
     i = 0
-    while newseqlist[i]=='N': i += 1
+    j = 0  # init here, in the event that the entire sequence is 29903 "N"s, the frag.fasta file will be empty
+    while i < len(newseqlist)-1 and newseqlist[i]=='N': i += 1
     while i < len(newseqlist)-1:
         # i is the first position that is not N
         j = i + 1  # j is now the second position that is not N in this segment

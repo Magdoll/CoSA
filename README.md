@@ -1,7 +1,7 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 02.20.2020 (v8.0.0)
+Last Updated: 02.20.2020 (v8.1.0)
 
 [Stable version of CoSA under PacBio's GitHub](https://github.com/pacificbiosciences/CoSA)
 
@@ -11,6 +11,8 @@ Join the [COVID19 Google Group](https://groups.google.com/g/smrt_covid19) to sta
  
 
 ## Updates
+
+02.20.2020    v8.1.0 release. `VCFCons.py` can handle edge case of complete empty consensus and deals with unusual overlapping variant calls.
 
 02.20.2020    v8.0.0 release. Added `.vcfcons.variants.csv` to `VCFCOns.py` output.
 

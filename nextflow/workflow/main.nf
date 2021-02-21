@@ -41,6 +41,9 @@ workflow {
 
     // [Channel] the barcode FASTA file, one entry per input barcode
     ch_in_barcodes_fasta = ch_in_metadata
+        .map { row ->
+            ">${row.BarcodeFName}\n${row.BarcodeF}\n>${row.BarcodeRName}\n${row.BarcodeR}"
+        }
         .collectFile(name: 'barcodes.fasta', newLine: true)
 
     // [Process] call the consensus reads from the subreads
@@ -50,21 +53,21 @@ workflow {
     lima(ccs.out.subreads_bam, ch_in_barcodes_fasta)
 
     // [Channel] build tuples of barcode key and BAM file
-    ch_lima_bams = lima.out.bams.map { bam ->
-        (bam.baseName.substring("demux.".length()), bam)
+    ch_lima_bams = demux.out.bams.flatten().map { bam ->
+        ["${bam.baseName}".substring("demux.".length()), bam]
     }
 
     // [[Channel] transform the metadata to tuples of barcode key and sample
     ch_in_lima_outputs = ch_in_metadata
-        .map { (sample, barcodeF, barcodeFName, barcodeR, barcodeRName) ->
-            ("${barcodeFName}--${barcodeRName}", sample)
+        .map { row ->
+            ["${row.BarcodeFName}--${row.BarcodeRName}", row.Sample]
         }
 
     // [[Channel] gather all BAMs for the same sample
     ch_bams_by_sample = ch_in_lima_outputs
-        .join(ch_lima_bams)                          // join by barcode name key
-        .map { (key, sample, bam) -> (sample, bam) } // discard the key
-        .groupTuple()                                // collect all BAMs by sample name
+        .join(ch_lima_bams)                        // join by barcode name key
+        .map { key, sample, bam -> [sample, bam] } // discard the key
+        .groupTuple()
 
     // [Process] combine into per-patient data
     bamtools_merge(ch_bams_by_sample)

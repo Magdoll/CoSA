@@ -8,7 +8,8 @@ nextflow.enable.dsl=2
 -----------------------------------------------------------------------------*/
 
 include { ccs                      } from '../modules/ccs/main'
-include { lima                     } from '../modules/lima/main'
+include { lima_demux               } from '../modules/lima/demux/main'
+include { lima_trim_amplicons      } from '../modules/lima/trim_amplicons/main'
 include { combine_demux_by_patient } from '../modules/combine_demux_by_patient/main'
 include { bamtools_merge           } from '../modules/bamtools/merge/main'
 
@@ -18,6 +19,14 @@ include { bamtools_merge           } from '../modules/bamtools/merge/main'
 
 if (!params.subreads_bam) {
     exit 1, "[Pipeline Error] Missing parameter 'subreads_bam'\n"
+}
+
+if (!params.sample_metadata) {
+    exit 1, "[Pipeline Error] Missing parameter 'sample_metadata'\n"
+}
+
+if (!params.amplicon_primers_fasta) {
+    exit 1, "[Pipeline Error] Missing parameter 'amplicon_primers_fasta'\n"
 }
 
 if (!params.outdir) {
@@ -32,6 +41,10 @@ workflow {
 
     // [Channel] the input subreads BAM (eg. <movie>.subreads.bam or movie>..hifi_reads.bam)
     ch_in_subreads_bam = Channel.fromPath(params.subreads_bam)
+
+    // [Channel] the input amplicon primers FASTA
+    // Please note the requirement of having adjacent F/R pairs for the --neighbors algorithm
+    ch_in_amplicon_primers_fasta = Channel.fromPath(params.amplicon_primers_fasta)
 
     // [Channel] the sample metadata.  Should contain:
     //           "Sample", "BarcodeF", "BarcodeFName", "BarcodeR", "BarcodeRName"
@@ -50,7 +63,7 @@ workflow {
     ccs(ch_in_subreads_bam)
 
     // [Process] demultiplex the CCS reads
-    lima(ccs.out.subreads_bam, ch_in_barcodes_fasta)
+    lima_demux(ccs.out.subreads_bam, ch_in_barcodes_fasta)
 
     // [Channel] build tuples of barcode key and BAM file
     ch_lima_bams = demux.out.bams.flatten().map { bam ->
@@ -73,7 +86,7 @@ workflow {
     bamtools_merge(ch_bams_by_sample)
 
     // [Process] trim amplicon primers
-    // TODO: support --neigbhors or --different
+    lima_demux(bamtools_merge.out.bam, ch_in_amplicon_primers_fasta)
 
      // [Process] variant calling
      // TODO: support parameterizign variant callers

@@ -141,8 +141,12 @@ class VcfCreator:
     def _mergeAlts(self,rows):
         '''merges alt calls for multiple calls at same pos for one sample'''
         r = sorted(rows.ref.values,key=len)[-1]
-        return pd.Series({'ref':r,
-                          'alt':rows[rows.ref!=r].alt.iloc[0] + r[1:]})
+        a = rows[rows.ref!=r].alt.iloc[0]
+        if len(a) == 1: #sub
+            alt = a + r[1:]
+        else: #ins
+            alt = a
+        return pd.Series({'ref':r,'alt':alt})
 
     def new_record(self,loc,data):
         #alts df

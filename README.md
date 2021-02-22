@@ -1,7 +1,7 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 02.21.2020 (v8.2.0)
+Last Updated: 02.22.2020 (v8.3.0)
 
 [Stable version of CoSA under PacBio's GitHub](https://github.com/pacificbiosciences/CoSA)
 
@@ -11,6 +11,8 @@ Join the [COVID19 Google Group](https://groups.google.com/g/smrt_covid19) to sta
  
 
 ## Updates
+
+02.22.2020    v8.3.0 release. `VCFCons.py ` now handles ill-formatted variants in CLC output.
 
 02.21.2020    v8.2.0 release. `pbaa2vcf.py` now can handle edge cases of empty variants.
 

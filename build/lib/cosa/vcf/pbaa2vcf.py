@@ -1,4 +1,5 @@
-__version__ = '7.2.0'
+#!/usr/bin/env python3
+__version__ = '8.2.0'
 import pysam,sys
 import numpy as np
 import pandas as pd
@@ -54,6 +55,9 @@ class VcfCreator:
 
     def makeFilteredInput(self):
         filtInput = self.alleles.join(self.variants).reset_index('POS')
+        #check for empty variant set
+        if not len(filtInput):
+            return filtInput.set_index('POS',append=True)
         #adjust deletion position to include prev base in ref
         #also duplicate ref call for shifted dels
         delPos = filtInput.VAR.str.startswith('-')
@@ -80,7 +84,7 @@ class VcfCreator:
     def makeHeader(self):
         header = pysam.VariantHeader()
 
-        header.filters.add('PBAAFAIL',None,None,'Consensus failed pbaa filters')
+        header.filters.add('PBAAFAIL',None,None,'Consensus failed pbAA filters')
         header.filters.add('HP',None,None,'Homopolymer length variant')
         header.info.add('NS',1,'Integer','Number of samples with data')
         header.info.add('AF','A','Float','Allele frequency')
@@ -89,7 +93,7 @@ class VcfCreator:
         #maybe
         header.formats.add('FT','.','String','pbAA filter')
         #header.formats.add('GQ',1,'Integer',"Conditional genotype quality")
-        header.formats.add('AQ','.','Float',"pbaa mean cluster quality")
+        header.formats.add('AQ','.','Float',"pbAA mean cluster quality")
         #header.formats.add('MIN_DP',1,'Integer',"Minimum DP observed within the GVCF block.")
         header.formats.add('AD','.','Integer',"Reads supporting each alt call")
         header.formats.add('VAF','.','Float',"pbAA cluster frequency")
@@ -160,7 +164,7 @@ class VcfCreator:
 
             suppCount   = calls[SUPPORTFIELD].map(Counter).sum()
             countMap    = {altFunc(v).get('alt',alleles[0]):suppCount[v]
-                           for v in ['.','-gttt'] + calls.loc[alts.index.get_level_values('uuid')].VAR.to_list()
+                           for v in ['.'] + calls.loc[alts.index.get_level_values('uuid')].VAR.to_list()
                            if v in suppCount}
 
             #Genotype
@@ -230,7 +234,7 @@ class Pbaa2Vcf_Error(Exception):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(prog='pbaa2vcf.py', description='Generate vcf file from pbaa results')
+    parser = argparse.ArgumentParser(prog='pbaa2vcf.py', description='Generate vcf file from pbAA results')
     parser.add_argument('allelesCsv', metavar='alleles', type=str,
                     help='Alleles csv from consensusVariants.py')
     parser.add_argument('variantsCsv', metavar='variants', type=str,
@@ -244,7 +248,7 @@ if __name__ == '__main__':
     parser.add_argument('-f','--minFreq', dest='minFreq', type=float, default=DEFAULTMINFREQ,
                     help=f'Ignore failed clusters below minFreq. Default {DEFAULTMINFREQ}')
     parser.add_argument('-p','--passOnly', dest='passOnly', action='store_true', default=False,
-                    help=f'Ignore pbaa failed clusters. Default use minFreq')
+                    help=f'Ignore pbAA failed clusters. Default use minFreq')
     parser.add_argument('-z','--compress', dest='compress', action='store_true', default=False,
                     help=f'Export bcf compressed file [NOT IMPLEMENTED]. Default export uncompressed vcf')
     parser.add_argument('-m','--merge', dest='merge', action='store_true', default=False,

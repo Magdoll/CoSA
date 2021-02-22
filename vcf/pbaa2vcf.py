@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = '7.3.0'
+__version__ = '8.3.0'
 import pysam,sys
 import numpy as np
 import pandas as pd

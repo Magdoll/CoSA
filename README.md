@@ -1,7 +1,7 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 02.19.2020 (v7.2.0)
+Last Updated: 02.22.2020 (v8.3.0)
 
 [Stable version of CoSA under PacBio's GitHub](https://github.com/pacificbiosciences/CoSA)
 
@@ -12,7 +12,15 @@ Join the [COVID19 Google Group](https://groups.google.com/g/smrt_covid19) to sta
 
 ## Updates
 
-02.19.2020    v7.2.0 release. `VCFCons.py` accepts the new pbaa VCF type that follows standard AD info. Minor fixes to pbaa->VCF scripts.
+02.22.2020    v8.3.0 release. `VCFCons.py ` now handles ill-formatted variants in CLC output.
+
+02.21.2020    v8.2.0 release. `pbaa2vcf.py` now can handle edge cases of empty variants.
+
+02.20.2020    v8.1.0 release. `VCFCons.py` can handle edge case of complete empty consensus and deals with unusual overlapping variant calls.
+
+02.20.2020    v8.0.0 release. Added `.vcfcons.variants.csv` to `VCFCOns.py` output.
+
+02.19.2020    v7.3.0 release. `VCFCons.py` accepts the new pbaa VCF type that follows standard AD info. Minor fixes to pbaa->VCF scripts.
 
 02.17.2020    v6.1.0 release. Fixed `VCFCons.py` dealing with multiple ALT and proper INS if REF is more than 1nt.
 

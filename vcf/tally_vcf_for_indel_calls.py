@@ -1,4 +1,4 @@
-__version__ = '7.1.0'
+__version__ = '8.1.0'
 import os, sys, glob, vcf
 from cosa.vcf import VCFCons
 
@@ -35,7 +35,8 @@ for file in files:
         elif args.vcf_type == 'bcftools':
             ##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
             read_cov = v.INFO['DP']
-            alt_index, alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
+            alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
+            alt_index = 1
         else:
             read_cov = x.data.DP
             alt_count_dict = VCFCons.get_alt_count_std(len(v.ALT) + 1, x, "{0}:{1}".format(prefix, v.POS))

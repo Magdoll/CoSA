@@ -1,14 +1,13 @@
-#!/usr/bin/env python
-__version__ = '7.1.0'
+#!/usr/bin/env python3
+__version__ = '8.2.0'
 #import pdb
 import os, sys
 from collections import Counter
+from csv import DictWriter
 from Bio import SeqIO
 import vcf
 
-if sys.version_info.major!=3:
-    print("This script requires Python 3")
-    sys.exit(-1)
+VARIANT_FIELDS = ['Pos', 'Type', 'Length', 'Depth', 'AltCount']
 
 def make_seq_from_list(seqlist, start0, end1):
     seq = ''
@@ -92,30 +91,36 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
     tally_types = Counter() # SUB/INS/DEL --> count
     vcf_reader = vcf.Reader(open(vcf_input))
     vcf_writer = vcf.Writer(open(prefix+'.vcfcons.vcf', 'w'), vcf_reader)
+    f_variant = open(prefix+'.vcfcons.variants.csv', 'w')
+    variant_writer = DictWriter(f_variant, fieldnames=VARIANT_FIELDS, delimiter='\t')
+    variant_writer.writeheader()
     for v in vcf_reader:
         # deepvariant has this weird record of RefCalls, ignore them
         if vcf_type == 'deepvariant' and v.FILTER == ['RefCall']: continue
         x = v.samples[0]
         # DeepVariant is unphased, can be 0/1, 1/1, etc...
         # pbaa is ?????
-        if vcf_type == 'pbaa':
-            total_cov = x.data.DP
-            alt_count_dict = get_alt_count_pbaa(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
-            alt_index, alt_count = alt_count_dict.most_common()[0]
-        elif vcf_type == 'CLC':
-            total_cov = x.data.DP
-            alt_count_dict = get_alt_count_clc(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
-            alt_index, alt_count = alt_count_dict.most_common()[0]
-        elif vcf_type == 'bcftools':
-            ##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
-            total_cov = v.INFO['DP']
-            alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
-            alt_index = 1
-        else:
-            total_cov = x.data.DP
-            alt_count_dict = get_alt_count_std(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
-            alt_index, alt_count = alt_count_dict.most_common()[0]
-
+        try:
+            if vcf_type == 'pbaa':
+                total_cov = x.data.DP
+                alt_count_dict = get_alt_count_pbaa(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+                alt_index, alt_count = alt_count_dict.most_common()[0]
+            elif vcf_type == 'CLC':
+                total_cov = x.data.DP
+                alt_count_dict = get_alt_count_clc(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+                alt_index, alt_count = alt_count_dict.most_common()[0]
+            elif vcf_type == 'bcftools':
+                ##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+                total_cov = v.INFO['DP']
+                alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
+                alt_index = 1
+            else:
+                total_cov = x.data.DP
+                alt_count_dict = get_alt_count_std(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+                alt_index, alt_count = alt_count_dict.most_common()[0]
+        except Exception as ex:
+            print("ERROR: failed to proerly parse info at {0}:{1}. Ignore! Exception msg: {2}".format(prefix, v.POS, ex))
+            continue
 
         # alt_index is '1' for ALT0, '2' for ALT1...etc, so we have to do int(alt_index)-1 to get the genotype from v.ALT
         _ref, _alt = str(v.REF), str(v.ALT[int(alt_index)-1])
@@ -140,6 +145,11 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
             if v.QUAL is None:
                 print("WARNING: QUAL field is empty for {0}:{1}. Ignoring QUAL filter.".format(prefix, v.POS))
             vcf_writer.write_record(v)
+            variant_writer.writerow({'Pos': v.POS,
+                                     'Type': t,
+                                     'Length': abs(delta) if t != 'SUB' else 1,
+                                     'Depth': total_cov,
+                                     'AltCount': alt_count})
             tally_types[t] += 1
             if t=='SUB':
                 # remember there could be consecutive subs
@@ -149,11 +159,22 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
                 newseqlist[v.POS-1] = str(_alt)
                 # in case the REF is not a single base, take care of it
                 for extra_i in range(_reflen-1):
-                    del newseqlist[v.POS+extra_i]
+                    curpos = v.POS+extra_i
+                    if curpos not in newseqlist:
+                        print("WARNING: {0}:{1} is already deleted! Check VCF format!".format(prefix, curpos))
+                    else:
+                        del newseqlist[curpos]
             else: # is deletion of size _d
-                for i in range(abs(delta)): del newseqlist[v.POS+_reflen-2-i]
+                for i in range(abs(delta)):
+                    curpos = v.POS+_reflen-2-i
+                    if curpos not in newseqlist:
+                        print("WARNING: {0}:{1} is already deleted! Check VCF format!".format(prefix, curpos))
+                    else:
+                        del newseqlist[curpos]
 
     vcf_writer.close()
+    f_variant.close()
+
     f = open(output_fasta, 'w')
     newseq = make_seq_from_list(newseqlist, 0, len(refseq))
     f.write(">" + newid + "\n" + newseq + '\n')
@@ -161,7 +182,8 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
 
     f = open(output_frag_fasta, 'w')
     i = 0
-    while newseqlist[i]=='N': i += 1
+    j = 0  # init here, in the event that the entire sequence is 29903 "N"s, the frag.fasta file will be empty
+    while i < len(newseqlist)-1 and newseqlist[i]=='N': i += 1
     while i < len(newseqlist)-1:
         # i is the first position that is not N
         j = i + 1  # j is now the second position that is not N in this segment

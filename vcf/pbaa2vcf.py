@@ -125,15 +125,30 @@ class VcfCreator:
         #TODO
         return 'pbaa2vcf <opts> <args>'
 
+    def _getAlleles(self,alts):
+        row     = alts.loc[alts.ref.str.len().idxmax()]
+        alleles = [row.ref] + sorted(alts.alt.unique()) 
+        return alleles
+
+    def _makeAlts(self,data,altFunc):
+        alts  = pd.DataFrame.from_records(data.VAR.map(altFunc),
+                                          index=data.index).dropna()
+        #check for multi var at same locus within sample
+        if not alts.index.is_unique:
+            alts = alts.groupby(['uuid','CHR','POS']).apply(self._mergeAlts)
+        return alts
+            
+    def _mergeAlts(self,rows):
+        '''merges alt calls for multiple calls at same pos for one sample'''
+        r = sorted(rows.ref.values,key=len)[-1]
+        return pd.Series({'ref':r,
+                          'alt':rows[rows.ref!=r].alt.iloc[0] + r[1:]})
+
     def new_record(self,loc,data):
         #alts df
         altFunc     = self._getAlt(*loc)
-        alts        = pd.DataFrame.from_records(data.VAR.map(altFunc),
-                                                index=data.index).dropna()
-        alleles     = [alts.loc[alts.ref.str.len().idxmax()].ref] + sorted(alts.alt.unique()) 
-        #TODO fix this bad assumption
-        #assume all rows have same guide
-        guide       = data.guide.iloc[0]
+        alts        = self._makeAlts(data,altFunc)
+        alleles     = self._getAlleles(alts)
         
         #variant record
         vrec = self.vcfFile.new_record()
@@ -169,7 +184,7 @@ class VcfCreator:
 
             #Genotype
             srec['GT']  = list(alts.reset_index(['CHR','POS'],drop=True)\
-                                   .reindex(calls.index.get_level_values('uuid'))\
+                                   .reindex(calls[calls.index.duplicated(keep='last')].index.get_level_values('uuid'))\
                                    .fillna(alleles[0])\
                                    .alt.map(alleles.index))
             srec.phased = not merged 

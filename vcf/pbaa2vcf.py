@@ -241,7 +241,7 @@ if __name__ == '__main__':
                     help='Variants csv from consensusVariants.py')
     parser.add_argument('reference', metavar='reference', type=str,
                     help='Reference fasta (must be indexed)')
-    parser.add_argument('-s','--sampleCol', dest='sampleCol', type=str, choices=['barcode','bioSample'], default='barcode',
+    parser.add_argument('-s','--sampleCol', dest='sampleCol', type=str, choices=['barcode','bioSample','runName'], default='barcode',
                     help=f'Column in allelesCsv to use for grouping samples. Default barcode')
     parser.add_argument('-o','--out', dest='out', type=str, default=None,
                     help=f'Output file. Default stdout')

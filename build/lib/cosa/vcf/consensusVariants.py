@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = '8.0.0'
+__version__ = '8.2.0'
 import re,pysam,os
 import mappy as mp
 import pandas as pd

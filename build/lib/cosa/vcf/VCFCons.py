@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = '8.1.0'
+__version__ = '8.2.0'
 #import pdb
 import os, sys
 from collections import Counter
@@ -100,24 +100,27 @@ def genVCFcons(ref_fasta, depth_file, vcf_input, prefix, newid,
         x = v.samples[0]
         # DeepVariant is unphased, can be 0/1, 1/1, etc...
         # pbaa is ?????
-        if vcf_type == 'pbaa':
-            total_cov = x.data.DP
-            alt_count_dict = get_alt_count_pbaa(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
-            alt_index, alt_count = alt_count_dict.most_common()[0]
-        elif vcf_type == 'CLC':
-            total_cov = x.data.DP
-            alt_count_dict = get_alt_count_clc(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
-            alt_index, alt_count = alt_count_dict.most_common()[0]
-        elif vcf_type == 'bcftools':
-            ##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
-            total_cov = v.INFO['DP']
-            alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
-            alt_index = 1
-        else:
-            total_cov = x.data.DP
-            alt_count_dict = get_alt_count_std(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
-            alt_index, alt_count = alt_count_dict.most_common()[0]
-
+        try:
+            if vcf_type == 'pbaa':
+                total_cov = x.data.DP
+                alt_count_dict = get_alt_count_pbaa(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+                alt_index, alt_count = alt_count_dict.most_common()[0]
+            elif vcf_type == 'CLC':
+                total_cov = x.data.DP
+                alt_count_dict = get_alt_count_clc(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+                alt_index, alt_count = alt_count_dict.most_common()[0]
+            elif vcf_type == 'bcftools':
+                ##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+                total_cov = v.INFO['DP']
+                alt_count = v.INFO['DP4'][2] + v.INFO['DP4'][3]
+                alt_index = 1
+            else:
+                total_cov = x.data.DP
+                alt_count_dict = get_alt_count_std(len(v.ALT)+1, x, "{0}:{1}".format(prefix, v.POS))
+                alt_index, alt_count = alt_count_dict.most_common()[0]
+        except Exception as ex:
+            print("ERROR: failed to proerly parse info at {0}:{1}. Ignore! Exception msg: {2}".format(prefix, v.POS, ex))
+            continue
 
         # alt_index is '1' for ALT0, '2' for ALT1...etc, so we have to do int(alt_index)-1 to get the genotype from v.ALT
         _ref, _alt = str(v.REF), str(v.ALT[int(alt_index)-1])

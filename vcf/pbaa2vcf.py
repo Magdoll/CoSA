@@ -188,7 +188,7 @@ class VcfCreator:
 
             #Genotype
             srec['GT']  = list(alts.reset_index(['CHR','POS'],drop=True)\
-                                   .reindex(calls[calls.index.duplicated(keep='last')].index.get_level_values('uuid'))\
+                                   .reindex(calls[~calls.index.duplicated(keep='first')].index.get_level_values('uuid'))\
                                    .fillna(alleles[0])\
                                    .alt.map(alleles.index))
             srec.phased = not merged 

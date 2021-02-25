@@ -112,7 +112,7 @@ def main(parser):
                 #except sqlite3.OperationalError as e:
                 except sqlalchemy.exc.OperationalError as e:
                     tries += 1
-                    print(f'WARNING: sqlite3 import error try #{tries}')
+                    print(f'WARNING: sqlite3 import error try #{tries} of {maxtries}')
                     if tries == maxtries:
                         raise ConsensusVariants_Error(f'Unable to import {pydf.source.unique()} to {args.sqlite3}')
                     else:

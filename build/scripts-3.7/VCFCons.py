@@ -1,5 +1,5 @@
-#!/home/UNIXHOME/etseng/anacondaPy37/envs/anaCogentPy37/bin/python
-__version__ = '8.2.0'
+#!/pbi/dept/secondary/siv/smrtlink/smrtlink-nightly/smrtsuite_10.1.0.116902/install/smrtlink-release_10.1.0.116902/bundles/smrttools/install/smrttools-release_10.1.0.116902/private/thirdparty/python3/python3_3.7.7/bin/python3
+__version__ = '8.3.0'
 #import pdb
 import os, sys
 from collections import Counter

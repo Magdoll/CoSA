@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = '8.2.0'
+__version__ = '8.3.0'
 import re,pysam,os
 import mappy as mp
 import pandas as pd
@@ -232,7 +232,7 @@ def parseHiLAAfastaName(fa):
     if fa.endswith('failed_cluster_sequences.fasta'):
         return 'failed'
     else:
-        raise ConsensusVariants_Error(f'Input fasta {fa} not in HiLAA format')
+        raise ConsensusVariants_Error(f'Input fasta {fa} not in pbAA format')
 
 def getKey(*args):
     return hashlib.md5(''.join(map(str,args)).encode()).hexdigest()
@@ -394,11 +394,11 @@ READINFOCOLS = ['readName',
 if __name__ == '__main__':
     import argparse,sys
 
-    parser = argparse.ArgumentParser(prog='consensusVariants.py', description='Write HiLAA consensus variants to table format')
+    parser = argparse.ArgumentParser(prog='consensusVariants.py', description='Write pbAA consensus variants to table format')
     parser.add_argument('reference', metavar='reference', type=str,
                     help='Reference fasta or mmi')
     parser.add_argument('consensusFastas', metavar='consensusFastas', nargs='*', type=str,
-                    help='Fasta file(s) of HiLAA consensus outputs')
+                    help='Fasta file(s) of pbAA consensus outputs')
     parser.add_argument('-r','--runName', dest='runName', type=str, default=None, required=True,
                     help=f'Sequencing run ID')
     parser.add_argument('-p','--prefix', dest='prefix', type=str, default=DEFAULTPREFIX, required=False,

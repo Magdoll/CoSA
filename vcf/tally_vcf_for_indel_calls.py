@@ -14,6 +14,7 @@ parser.add_argument("--vcf_type", choices=['pbaa', 'deepvariant', 'CLC', 'bcftoo
 args = parser.parse_args()
 
 files = glob.glob(args.PATTERN)
+files.sort()
 f = open(args.OUTFILE, 'w')
 f.write("sample\tpos\ttype\tlen\tdepth\talt_count\n")
 for file in files:

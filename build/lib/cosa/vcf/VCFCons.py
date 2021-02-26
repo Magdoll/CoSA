@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = '8.2.0'
+__version__ = '8.3.0'
 #import pdb
 import os, sys
 from collections import Counter

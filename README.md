@@ -1,7 +1,7 @@
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 
-Last Updated: 02.23.2020 (v8.4.0)
+Last Updated: 02.23.2020 (v8.5.0)
 
 [Stable version of CoSA under PacBio's GitHub](https://github.com/pacificbiosciences/CoSA)
 
@@ -11,6 +11,8 @@ Join the [COVID19 Google Group](https://groups.google.com/g/smrt_covid19) to sta
  
 
 ## Updates
+
+02.26.2020    v8.5.0 release. cleaned up unnecesary directories.
 
 02.23.2020    v8.4.0 release. `pbaa2vcf.py` format update fix.
 

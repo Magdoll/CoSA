@@ -1,4 +1,4 @@
-__version__ = '8.1.0'
+__version__ = '8.5.0'
 import os, sys, glob, vcf
 from cosa.vcf import VCFCons
 

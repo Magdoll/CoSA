@@ -50,7 +50,7 @@ CoSA is a set of Python and R scripts for analyzing SARS-CoV-2 sequences from Pa
 To install, clone the repo and install:
 
 ```
-$ git clone https://github.com/Magdoll/CoSA.git
+$ git clone https://github.com/<ACCOUNT>/CoSA.git
 $ cd CoSA
 $ python setup.py build
 $ python setup.py install

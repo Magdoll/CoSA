@@ -1,4 +1,4 @@
-![](https://github.com/Magdoll/images_public/blob/master/banners/test.png?raw=true)
+<a href="https://www.pacb.com/hifi-webinar">![](https://github.com/Magdoll/images_public/blob/master/banners/test.png?raw=true)</a>
 
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis

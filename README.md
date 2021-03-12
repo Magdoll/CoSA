@@ -1,4 +1,4 @@
-<a href="hhttps://programs.pacificbiosciences.com/l/1652/2021-03-12/42p2d7">![](https://github.com/Magdoll/images_public/blob/master/banners/test.png?raw=true)</a>
+![<a href="https://programs.pacificbiosciences.com/l/1652/2021-03-12/42p2d7"/>](https://github.com/Magdoll/images_public/blob/master/banners/test.png?raw=true)
 
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis

@@ -1,3 +1,5 @@
+![](https://github.com/Magdoll/images_public/blob/master/banners/test.png?raw=true)
+
 # CoSA
 Coronavirus (SARS-Cov-2) sequencing analysis
 

@@ -5,6 +5,7 @@ import pysam
 import bisect
 import pdb
 import parasail
+from Bio.Seq import Seq
 
 
 ProbeMatchInfo = namedtuple('ProbeMatchInfo', ['probename1', 'probename2', 'probename',
@@ -229,10 +230,13 @@ def iter_cigar_string_backwards(cigar_string):
         i -= 1
     yield int(num), s
 
-def write_match_record(r, info, writer_bam, writer_info):
+def write_match_record(r, info, writer_bam, writer_info, keep_strand):
     d = r.to_dict()
     d['seq'] = r.seq[info.new_start:info.new_end]
     d['qual'] = d['qual'][info.new_start:info.new_end]
+    if keep_strand and r.is_reverse:
+        d['seq'] = str(Seq(d['seq']).reverse_complement())
+        d['qual'] = d['qual'][::-1]
     d['tags'].append('XM:Z:' + info.umi1 + info.umi2)
     d['tags'].append('XC:Z:' + info.probename)
     d['tags'].append('XA:Z:XM-XC')
@@ -288,7 +292,9 @@ def find_probe_match_by_mapping(r, seq2, proberegions, ext_regions_by_start, lig
         i += 1
     return None
 
-def trim_MIPs_by_mapping(mapped_bam, output_prefix, proberegions, umi_len=5, fixed_trim_length=25, samplename='NA'):
+def trim_MIPs_by_mapping(mapped_bam, output_prefix, proberegions, umi_len=5,
+                         fixed_trim_length=25, samplename='NA',
+                         keep_strand=False):
     """
     Given the sequences already mapped to genome (mapped bam), identify the most likely probe combo and trim it
     If no probe pair is found, trim a fixed length based on <fixed_trim_length>
@@ -368,7 +374,7 @@ def trim_MIPs_by_mapping(mapped_bam, output_prefix, proberegions, umi_len=5, fix
                                   samplename=samplename)
 
         if flag_matched:
-            write_match_record(r, info, writer, writer_info)
+            write_match_record(r, info, writer, writer_info, keep_strand)
             already_assigned.add(r.qname)
 
     # write all the unassigned here, checking they didn't exist in already_assigned
@@ -386,7 +392,7 @@ def trim_MIPs_by_mapping(mapped_bam, output_prefix, proberegions, umi_len=5, fix
                               new_end=len(r.seq) - fixed_trim_length,
                               size_diff='NA',
                               samplename=samplename)
-        write_match_record(r, info, writer, writer_info)
+        write_match_record(r, info, writer, writer_info, keep_strand)
     f_info.close()
     writer.close()
 
@@ -419,6 +425,7 @@ if __name__ == "__main__":
     parser.add_argument("--umi_len", default=5, type=int, help="UMI length (default: 5bp)")
     parser.add_argument("--fixed_trim_length", default=25, type=int, help="Default fixed trim length for those without a matching probe set (default: 25bp)")
     parser.add_argument("--samplename", default='NA', help="(optional) sample name")
+    parser.add_argument("-k", "--keep_strand", default=False, action="store_true", help="Keep the read original strand (default: off)")
 
     args = parser.parse_args()
 
@@ -429,5 +436,6 @@ if __name__ == "__main__":
                          proberegions,
                          umi_len=args.umi_len,
                          fixed_trim_length=args.fixed_trim_length,
-                         samplename=args.samplename)
+                         samplename=args.samplename,
+                         keep_strand=args.keep_strand)
 

@@ -1,4 +1,7 @@
 #!/usr/env/python3
+__author__ = "etseng@pacb.com"
+__version__ = "2.0.0"
+
 from collections import defaultdict, namedtuple
 from csv import DictWriter, DictReader
 import pysam
@@ -320,7 +323,7 @@ def trim_MIPs_by_mapping(mapped_bam, output_prefix, proberegions, umi_len=5,
     writer_info.writeheader()
 
     already_assigned = set() # list of read_id that has been assigned
-    unassigned_list = [] # use this to store unassigned, since sometimes a read can have multi-mappings
+    unassigned_list = {} # r.qname -> record, use this to store unassigned, since sometimes a read can have multi-mappings
 
     for r in reader:
         if r.is_unmapped: continue
@@ -355,7 +358,7 @@ def trim_MIPs_by_mapping(mapped_bam, output_prefix, proberegions, umi_len=5,
                                           samplename=samplename)
                     flag_matched = True
             if not flag_matched: # welp, still unassigned
-                unassigned_list.append(r)
+                unassigned_list[r.qname] = r
         else:
             flag_matched = True
             size_diff, probename1, probename2, shift1, shift2, ext_seq, lig_seq = m
@@ -378,7 +381,7 @@ def trim_MIPs_by_mapping(mapped_bam, output_prefix, proberegions, umi_len=5,
             already_assigned.add(r.qname)
 
     # write all the unassigned here, checking they didn't exist in already_assigned
-    for r in unassigned_list:
+    for r in unassigned_list.values():
         if r.qname in already_assigned: continue
         info = ProbeMatchInfo(probename1='NA',
                               probename2='NA',

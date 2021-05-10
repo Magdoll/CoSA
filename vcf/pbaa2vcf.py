@@ -211,16 +211,16 @@ class VcfCreator:
             merged = False
             if self.mergeVars:
                 grouped = calls.groupby('VAR',as_index=False)
-                if (grouped.size() > 1).any(): #some merging
+                if (grouped.size()['size'] > 1).any(): #some merging
                     calls = grouped.apply(self.mergeVar)\
                                    .reset_index(level=0,drop=True)
                     merged = True
-                
-            alleleMeta  = self.alleles.loc[calls.index.get_level_values('uuid')]\
+            
+            alleleMeta  = self.alleles.loc[calls.index.get_level_values('uuid')]
 
             suppCount   = calls[SUPPORTFIELD].map(Counter).sum()
             countMap    = {altFunc(v).get('alt',alleles[0]):suppCount[v]
-                           for v in ['.'] + calls.loc[alts.index.get_level_values('uuid')].VAR.to_list()
+                           for v in ['.'] + calls.reindex(alts.index.get_level_values('uuid'),level=0).VAR.to_list()
                            if v in suppCount}
 
             #Genotype
@@ -230,7 +230,7 @@ class VcfCreator:
                                    .alt.map(alleles.index))
             srec.phased = not merged 
             #total depth 
-            srec['DP'] = int(calls.numreads.sum())
+            srec['DP'] = int(calls.numreads.astype(int).sum())
             #pbaa avg_qual
             srec['AQ'] = list(alleleMeta.avg_quality) if not merged else None
             #allele depth
@@ -256,7 +256,7 @@ class VcfCreator:
         f = itemgetter(0)
         d = dat.reset_index()
         firsts = {c:f(d[c]) for c in ['uuid','CHR','POS','VAR']}
-        sums   = {c:d[c].sum() for c in ['numreads','nsupport']}
+        sums   = {c:d[c].astype(int).sum() for c in ['numreads','nsupport']}
         sums[SUPPORTFIELD] = dict(d[SUPPORTFIELD].map(Counter).sum())
         sums['guide'] = ';'.join(d.guide.unique())
         firsts.update(sums)

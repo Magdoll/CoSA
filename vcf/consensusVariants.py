@@ -18,6 +18,7 @@ DATEFORMAT='%Y-%m-%d %H:%M:%S'
 ALLELETABLE='pbAA_consensus'
 VARIANTTABLE='SampleVariants'
 SUPPORTFIELD='supportReads'
+MAXDBTRIES=10
 
 def main(parser):
     args = parser.parse_args()
@@ -29,7 +30,7 @@ def main(parser):
         raise ConsensusVariants_Error('Use both hifiSupport and read_info together')
 
     print('Loading Reference...')
-    aligner = Aligner(args.reference,preset=None) #disabled presets at the moment
+    aligner = Aligner(args.reference,preset=args.preset) #disabled presets at the moment
     
     sMap     = sampleMap(args.sampleMap)
     dtime    = args.datetime if args.datetime else getNow()
@@ -92,6 +93,7 @@ def main(parser):
     if not args.noCSV:
         alleles_out.to_csv(f'{args.prefix}_alleles.csv')
         variant_out.to_csv(f'{args.prefix}_variants.csv')        
+
     if args.sqlite3:
         import time,sqlite3,sqlalchemy
         engine = sqlalchemy.create_engine(f'sqlite:///{args.sqlite3}', echo=False)
@@ -104,7 +106,7 @@ def main(parser):
             if SUPPORTFIELD in pbaa.columns:
                 pbaa[SUPPORTFIELD] = pbaa[SUPPORTFIELD].astype(str)
             tries = 0
-            maxtries = 20
+            maxtries = MAXDBTRIES
             while tries < maxtries:
                 try:
                     pbaa.set_index('uuid').to_sql(sqldf, con=engine, if_exists='append')        
@@ -128,15 +130,16 @@ def main(parser):
     return alleles_out,variant_out
 
 class Aligner:
-    def __init__(self,reference,preset=None):
+    presets = {'splice'    : {'preset' :'splice'},
+               'map-pb'    : {'preset' :'map-pb'},
+               'gaplenient': {'scoring':(1,2,2,1,18,0)}, # (A,B,o,e,O,E)
+               'gapstrict' : {'scoring':(2,5,10,4,56,1)}} #pbmm2 ccs + -o 10
+
+
+    def __init__(self,reference,preset='gaplenient'):
         self.kwargs = {'fn_idx_in' : reference,
                        'best_n'    : 1}
-        if preset:
-            self.kwargs['preset']  = preset
-        else:
-            #self.kwargs['scoring'] = (2,5,5,4,56,0)
-            #self.kwargs['scoring'] = (1,2,2,1,32,0) # (A,B,o,e,O,E)
-            self.kwargs['scoring'] = (1,2,2,1,18,0) # (A,B,o,e,O,E)
+        self.kwargs.update(self.presets[preset])
         self._aligner = mp.Aligner(**self.kwargs)
     
     def __call__(self,rec,skipFailed=True):
@@ -186,6 +189,8 @@ def safeFloat(v):
 
 def parseName(rec):
     resDict = NAMEPATTERN.search(rec.name).groupdict()
+    for k in ['numreads','cluster']:
+        resDict[k] = int(resDict[k])
     splits  = list(map(lambda s:s.strip().split(),rec.comment.split(':')))
     flds    = map(itemgetter(-1),splits[:-1])
     vals    = [safeFloat(s[0]) for s in splits[1:-1]] + [' '.join(splits[-1])]
@@ -393,11 +398,23 @@ READINFOCOLS = ['readName',
                 'Score',
                 'ScoreParts',
                 'Sample',
-                'VarString',
+                'length',
+                'avgQuality',
                 'ClusterId',
-                'ClusterProb',
-                'ClusterSize',
-                'ChimeraScore']
+                'ClusterSize']
+
+#READINFOCOLS = ['readName',
+#                'guide',
+#                'orient',
+#                'secondBestGuide',
+#                'Score',
+#                'ScoreParts',
+#                'Sample',
+#                'VarString',
+#                'ClusterId',
+#                'ClusterProb',
+#                'ClusterSize',
+#                'ChimeraScore']
 
 
 if __name__ == '__main__':
@@ -419,7 +436,7 @@ if __name__ == '__main__':
                     help=f'Datetime of sequence run. Format "{DATEFORMAT.replace("%","%%")}". Default current time')
     inputp.add_argument('-f','--minFrac', dest='minFrac', type=float, default=DEFAULTMINFRAC,
                     help=f'Ignore failed clusters below minFrac. Default {DEFAULTMINFRAC}')
-    inputp.add_argument('-P','--preset', dest='preset', choices=['splice','map-pb'], default=DEFAULTPRESET,
+    inputp.add_argument('-P','--preset', dest='preset', choices=['splice','map-pb','gaplenient','gapstrict'], default=DEFAULTPRESET,
                     help=f'DISABLED. Alignment preset for mappy aligner. Choose "splice" for expected large deletions. Default {DEFAULTPRESET}')
     inputp.add_argument('--hifiSupport', dest='hifiSupport', type=str, default=None,
                     help=f'Add per-variant read support depth. Path to hifi fastq used for clustering. Requires read_info option to be set. Default None')

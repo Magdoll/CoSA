@@ -6,13 +6,12 @@ import pandas as pd
 import hashlib
 from operator import itemgetter,xor
 from collections import Counter
-#from multiprocessing import Pool,cpu_count
 
 #consensus sequence names
 NAMEPATTERN=re.compile('sample-(?P<barcode>.*)_guide-(?P<guide>.*)_cluster-(?P<cluster>[0-9]+)_ReadCount-(?P<numreads>[0-9]+)')
 DEFAULTSMAPNAMES=['Barcode','Bio Sample Name']
 DEFAULTMINFRAC=0.01
-DEFAULTPRESET='splice'
+DEFAULTPRESET='gaplenient'
 DEFAULTPREFIX='consensusVariants_summary'
 DATEFORMAT='%Y-%m-%d %H:%M:%S'
 ALLELETABLE='pbAA_consensus'
@@ -106,16 +105,15 @@ def main(parser):
             if SUPPORTFIELD in pbaa.columns:
                 pbaa[SUPPORTFIELD] = pbaa[SUPPORTFIELD].astype(str)
             tries = 0
-            maxtries = MAXDBTRIES
-            while tries < maxtries:
+            while tries < MAXDBTRIES:
                 try:
                     pbaa.set_index('uuid').to_sql(sqldf, con=engine, if_exists='append')        
                     break
                 #except sqlite3.OperationalError as e:
                 except sqlalchemy.exc.OperationalError as e:
                     tries += 1
-                    print(f'WARNING: sqlite3 import error try #{tries} of {maxtries}')
-                    if tries == maxtries:
+                    print(f'WARNING: sqlite3 import error try #{tries} of {MAXDBTRIES}')
+                    if tries == MAXDBTRIES:
                         raise ConsensusVariants_Error(f'Unable to import {pydf.source.unique()} to {args.sqlite3}')
                     else:
                         time.sleep(2)
@@ -132,9 +130,8 @@ def main(parser):
 class Aligner:
     presets = {'splice'    : {'preset' :'splice'},
                'map-pb'    : {'preset' :'map-pb'},
-               'gaplenient': {'scoring':(1,2,2,1,18,0)}, # (A,B,o,e,O,E)
-               'gapstrict' : {'scoring':(2,5,10,4,56,1)}} #pbmm2 ccs + -o 10
-
+               'gaplenient': {'scoring':(1,2,2,1,18,0)},  # (A,B,o,e,O,E)
+               'gapstrict' : {'scoring':(2,5,10,4,56,1)}} # equiv to pbmm2 align --preset CCS -o 10
 
     def __init__(self,reference,preset='gaplenient'):
         self.kwargs = {'fn_idx_in' : reference,
@@ -403,20 +400,6 @@ READINFOCOLS = ['readName',
                 'ClusterId',
                 'ClusterSize']
 
-#READINFOCOLS = ['readName',
-#                'guide',
-#                'orient',
-#                'secondBestGuide',
-#                'Score',
-#                'ScoreParts',
-#                'Sample',
-#                'VarString',
-#                'ClusterId',
-#                'ClusterProb',
-#                'ClusterSize',
-#                'ChimeraScore']
-
-
 if __name__ == '__main__':
     import argparse,sys
 
@@ -436,8 +419,8 @@ if __name__ == '__main__':
                     help=f'Datetime of sequence run. Format "{DATEFORMAT.replace("%","%%")}". Default current time')
     inputp.add_argument('-f','--minFrac', dest='minFrac', type=float, default=DEFAULTMINFRAC,
                     help=f'Ignore failed clusters below minFrac. Default {DEFAULTMINFRAC}')
-    inputp.add_argument('-P','--preset', dest='preset', choices=['splice','map-pb','gaplenient','gapstrict'], default=DEFAULTPRESET,
-                    help=f'DISABLED. Alignment preset for mappy aligner. Choose "splice" for expected large deletions. Default {DEFAULTPRESET}')
+    inputp.add_argument('-P','--preset', dest='preset', choices=list(Aligner.presets.keys()), default=DEFAULTPRESET,
+                    help=f'Alignment preset for mappy aligner. Choose "splice" for expected large deletions. Default {DEFAULTPRESET}')
     inputp.add_argument('--hifiSupport', dest='hifiSupport', type=str, default=None,
                     help=f'Add per-variant read support depth. Path to hifi fastq used for clustering. Requires read_info option to be set. Default None')
     inputp.add_argument('--read_info', dest='read_info', type=str, default=None,

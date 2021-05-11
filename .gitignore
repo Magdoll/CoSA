@@ -1,0 +1,4 @@
+.*pyc
+build/
+dist/
+CoSA.egg-info/

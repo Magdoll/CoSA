@@ -378,17 +378,29 @@ TABLEMAP = {ALLELETABLE:      {'uuid'               :'uuid',
            }
 
 READINFOCOLS = ['readName',
-                'guide',
-                'orient',
-                'secondBestGuide',
-                'Score',
-                'ScoreParts',
-                'Sample',
-                'VarString',
-                'ClusterId',
-                'ClusterProb',
-                'ClusterSize',
-                'ChimeraScore']
+		'guide',
+		'orient',
+		'secondBestGuide',
+		'Score',
+		'ScoreParts',
+		'Sample',
+		'length',
+		'avgQuality',
+		'ClusterId',
+		'ClusterSize']
+
+#READINFOCOLS = ['readName',
+#                'guide',
+#                'orient',
+#                'secondBestGuide',
+#                'Score',
+#                'ScoreParts',
+#                'Sample',
+#                'VarString',
+#                'ClusterId',
+#                'ClusterProb',
+#                'ClusterSize',
+#                'ChimeraScore']
 
 
 if __name__ == '__main__':

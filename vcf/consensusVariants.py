@@ -6,37 +6,37 @@ import pandas as pd
 import hashlib
 from operator import itemgetter,xor
 from collections import Counter
-#from multiprocessing import Pool,cpu_count
 
 #consensus sequence names
 NAMEPATTERN=re.compile('sample-(?P<barcode>.*)_guide-(?P<guide>.*)_cluster-(?P<cluster>[0-9]+)_ReadCount-(?P<numreads>[0-9]+)')
 DEFAULTSMAPNAMES=['Barcode','Bio Sample Name']
 DEFAULTMINFRAC=0.01
-DEFAULTPRESET='splice'
+DEFAULTPRESET='gaplenient'
 DEFAULTPREFIX='consensusVariants_summary'
 DATEFORMAT='%Y-%m-%d %H:%M:%S'
 ALLELETABLE='pbAA_consensus'
 VARIANTTABLE='SampleVariants'
 SUPPORTFIELD='supportReads'
+MAXDBTRIES=10
 
 def main(parser):
     args = parser.parse_args()
 
-    if args.noCSV and args.sqlite3 is None:
-        raise ConsensusVariants_Error('No outputs defined with "--noCSV" and no sqlite3 db input')
+    if args.noCSV and args.sqlite3 is None and args.vcf is False:
+        raise ConsensusVariants_Error('No outputs defined with "--noCSV", no sqlite db, no vcf')
         
     if xor(args.hifiSupport is None,args.read_info is None):
         raise ConsensusVariants_Error('Use both hifiSupport and read_info together')
 
     print('Loading Reference...')
-    aligner = Aligner(args.reference,preset=None) #disabled presets at the moment
+    aligner = Aligner(args.reference,preset=args.preset) #disabled presets at the moment
     
     sMap     = sampleMap(args.sampleMap)
     dtime    = args.datetime if args.datetime else getNow()
     alleles  = []
     variants = []
     print('Calling variants from consensus...')
-    for consensusFa in args.consensusFastas:
+    for consensusFa in args.consensusFasta:
         consensusType = parseHiLAAfastaName(consensusFa)
         if args.progress:
             print(f'Processing {consensusFa}')
@@ -92,6 +92,7 @@ def main(parser):
     if not args.noCSV:
         alleles_out.to_csv(f'{args.prefix}_alleles.csv')
         variant_out.to_csv(f'{args.prefix}_variants.csv')        
+
     if args.sqlite3:
         import time,sqlite3,sqlalchemy
         engine = sqlalchemy.create_engine(f'sqlite:///{args.sqlite3}', echo=False)
@@ -104,32 +105,38 @@ def main(parser):
             if SUPPORTFIELD in pbaa.columns:
                 pbaa[SUPPORTFIELD] = pbaa[SUPPORTFIELD].astype(str)
             tries = 0
-            maxtries = 20
-            while tries < maxtries:
+            while tries < MAXDBTRIES:
                 try:
                     pbaa.set_index('uuid').to_sql(sqldf, con=engine, if_exists='append')        
                     break
                 #except sqlite3.OperationalError as e:
                 except sqlalchemy.exc.OperationalError as e:
                     tries += 1
-                    print(f'WARNING: sqlite3 import error try #{tries}')
-                    if tries == maxtries:
+                    print(f'WARNING: sqlite3 import error try #{tries} of {MAXDBTRIES}')
+                    if tries == MAXDBTRIES:
                         raise ConsensusVariants_Error(f'Unable to import {pydf.source.unique()} to {args.sqlite3}')
                     else:
                         time.sleep(2)
+
+    if args.vcf:
+        from pbaa2vcf import VcfCreator
+        vcf = VcfCreator(f'{args.prefix}.vcf',alleles_out,variant_out,args.reference,
+                         sampleCol=args.vcfSampleCol,passOnly=True,
+                         mergeVars=args.vcfMerge,dataframe=True) 
+        vcf.run()
                     
     return alleles_out,variant_out
 
 class Aligner:
-    def __init__(self,reference,preset=None):
+    presets = {'splice'    : {'preset' :'splice'},
+               'map-pb'    : {'preset' :'map-pb'},
+               'gaplenient': {'scoring':(1,2,2,1,18,0)},  # (A,B,o,e,O,E)
+               'gapstrict' : {'scoring':(2,5,10,4,56,1)}} # equiv to pbmm2 align --preset CCS -o 10
+
+    def __init__(self,reference,preset='gaplenient'):
         self.kwargs = {'fn_idx_in' : reference,
                        'best_n'    : 1}
-        if preset:
-            self.kwargs['preset']  = preset
-        else:
-            #self.kwargs['scoring'] = (2,5,5,4,56,0)
-            #self.kwargs['scoring'] = (1,2,2,1,32,0) # (A,B,o,e,O,E)
-            self.kwargs['scoring'] = (1,2,2,1,18,0) # (A,B,o,e,O,E)
+        self.kwargs.update(self.presets[preset])
         self._aligner = mp.Aligner(**self.kwargs)
     
     def __call__(self,rec,skipFailed=True):
@@ -179,6 +186,8 @@ def safeFloat(v):
 
 def parseName(rec):
     resDict = NAMEPATTERN.search(rec.name).groupdict()
+    for k in ['numreads','cluster']:
+        resDict[k] = int(resDict[k])
     splits  = list(map(lambda s:s.strip().split(),rec.comment.split(':')))
     flds    = map(itemgetter(-1),splits[:-1])
     vals    = [safeFloat(s[0]) for s in splits[1:-1]] + [' '.join(splits[-1])]
@@ -314,6 +323,8 @@ class supportEngine:
             return vTable.join(self.readInfo)
 
 class sampleMap:
+    _UNK='unknown_sample'
+
     def __init__(self,sampleMapFile=None):
         self.sMap      = {}
         self.remaining = []
@@ -331,7 +342,7 @@ class sampleMap:
             self.sMap      = dict(pd.read_csv(mapFile)[DEFAULTSMAPNAMES].values)
             self.remaining = list(self.sMap.items()) 
             return self._getSample
-    _UNK='unknown_sample'
+
     def _getSample(self,bc):
         #sn = self.sMap[bc]
         sn = self.sMap.get(bc,self._UNK)
@@ -378,62 +389,56 @@ TABLEMAP = {ALLELETABLE:      {'uuid'               :'uuid',
            }
 
 READINFOCOLS = ['readName',
-		'guide',
-		'orient',
-		'secondBestGuide',
-		'Score',
-		'ScoreParts',
-		'Sample',
-		'length',
-		'avgQuality',
-		'ClusterId',
-		'ClusterSize']
-
-#READINFOCOLS = ['readName',
-#                'guide',
-#                'orient',
-#                'secondBestGuide',
-#                'Score',
-#                'ScoreParts',
-#                'Sample',
-#                'VarString',
-#                'ClusterId',
-#                'ClusterProb',
-#                'ClusterSize',
-#                'ChimeraScore']
-
+                'guide',
+                'orient',
+                'secondBestGuide',
+                'Score',
+                'ScoreParts',
+                'Sample',
+                'length',
+                'avgQuality',
+                'ClusterId',
+                'ClusterSize']
 
 if __name__ == '__main__':
     import argparse,sys
 
-    parser = argparse.ArgumentParser(prog='consensusVariants.py', description='Write pbAA consensus variants to table format')
+    parser = argparse.ArgumentParser(prog='consensusVariants.py', description='Write pbAA consensus variants to table, sql, or vcf format')
     parser.add_argument('reference', metavar='reference', type=str,
                     help='Reference fasta or mmi')
-    parser.add_argument('consensusFastas', metavar='consensusFastas', nargs='*', type=str,
+    parser.add_argument('consensusFasta', metavar='consensusFasta', nargs='*', type=str,
                     help='Fasta file(s) of pbAA consensus outputs')
-    parser.add_argument('-r','--runName', dest='runName', type=str, default=None, required=True,
-                    help=f'Sequencing run ID')
-    parser.add_argument('-p','--prefix', dest='prefix', type=str, default=DEFAULTPREFIX, required=False,
-                    help=f'Output prefix. Default {DEFAULTPREFIX}')
-    parser.add_argument('-s','--sampleMap', dest='sampleMap', type=str, default=None,
+    inputp = parser.add_argument_group('Input Options')
+    inputp.add_argument('-r','--runName', dest='runName', type=str, default=None, required=True,
+                    help=f'Sequencing run ID. Required')
+    inputp.add_argument('-s','--sampleMap', dest='sampleMap', type=str, default=None,
                     help=f'CSV file mapping biosample name to barcode. Must have fields {DEFAULTSMAPNAMES}. Default None')
-    parser.add_argument('-d','--datetime', dest='datetime', type=str, default=None,
-                    help=f'Datetime of sequence run. Format "{DATEFORMAT.replace("%","%%")}". Default current time')
-    parser.add_argument('-i','--ignoreMissing', dest='ignoreMissing', action='store_true', default=False,
+    inputp.add_argument('-i','--ignoreMissing', dest='ignoreMissing', action='store_true', default=False,
                     help=f'Do not report empty rows for missing samples from sample map. Default False')
-    parser.add_argument('-f','--minFrac', dest='minFrac', type=float, default=DEFAULTMINFRAC,
+    inputp.add_argument('-d','--datetime', dest='datetime', type=str, default=None,
+                    help=f'Datetime of sequence run. Format "{DATEFORMAT.replace("%","%%")}". Default current time')
+    inputp.add_argument('-f','--minFrac', dest='minFrac', type=float, default=DEFAULTMINFRAC,
                     help=f'Ignore failed clusters below minFrac. Default {DEFAULTMINFRAC}')
-    parser.add_argument('-P','--preset', dest='preset', choices=['splice','map-pb'], default=DEFAULTPRESET,
-                    help=f'DISABLED. Alignment preset for mappy aligner. Choose "splice" for expected large deletions. Default {DEFAULTPRESET}')
-    parser.add_argument('--hifiSupport', dest='hifiSupport', type=str, default=None,
+    inputp.add_argument('-P','--preset', dest='preset', choices=list(Aligner.presets.keys()), default=DEFAULTPRESET,
+                    help=f'Alignment preset for mappy aligner. Choose "splice" for expected large deletions. Default {DEFAULTPRESET}')
+    inputp.add_argument('--hifiSupport', dest='hifiSupport', type=str, default=None,
                     help=f'Add per-variant read support depth. Path to hifi fastq used for clustering. Requires read_info option to be set. Default None')
-    parser.add_argument('--read_info', dest='read_info', type=str, default=None,
+    inputp.add_argument('--read_info', dest='read_info', type=str, default=None,
                     help=f'Path to pbAA read_info table for the run. Required for hifi-support option. Default None')
-    parser.add_argument('--sqlite3', dest='sqlite3', type=str, default=None,
-                    help=f'Path to sqlite3 db to updload data. Will create or append to tables "{ALLELETABLE}" and "{VARIANTTABLE}". Default None')
-    parser.add_argument('--noCSV', dest='noCSV', action='store_true', default=False,
+    outputp = parser.add_argument_group('Output Options')
+    outputp.add_argument('-p','--prefix', dest='prefix', type=str, default=DEFAULTPREFIX, required=False,
+                    help=f'Output prefix. Default {DEFAULTPREFIX}')
+    outputp.add_argument('--noCSV', dest='noCSV', action='store_true', default=False,
                     help=f'Do not write CSV outputs. Default False (write to csv)')
-    parser.add_argument('--progress', dest='progress', action='store_true', default=False,
+    outputp.add_argument('--sqlite3', dest='sqlite3', type=str, default=None,
+                    help=f'Path to sqlite3 db to updload data. Will create or append to tables "{ALLELETABLE}" and "{VARIANTTABLE}". Default None')
+    outputp.add_argument('--vcf', dest='vcf', action='store_true', default=False,
+                    help=f'Output VCF file. Default False')
+    outputp.add_argument('--vcfSampleCol', dest='vcfSampleCol', choices=['barcode','bioSample','runName'], default='barcode',
+                    help=f'Column name to use for getting sample name in vcf. Default barcode')
+    outputp.add_argument('--vcfMerge', dest='vcfMerge', action='store_true', default=False,
+                    help=f'Merge overlapping variants in VCF for tiled (usually haploid) amplicons. Default False')
+    outputp.add_argument('--progress', dest='progress', action='store_true', default=False,
                     help=f'Print sample names as they are processed. Default False')
 
     try:

@@ -12,32 +12,41 @@ SUPPORTFIELD='supportReads'
 
 def main(parser):
     args = parser.parse_args()
-    
+
     print('Loading data')
     newVcf = VcfCreator(args.out or '-',
-                        args.allelesCsv,
-                        args.variantsCsv,
+                        args.alleles,
+                        args.variants,
                         args.reference,
                         'wb' if args.compress else 'w',
                         args.sampleCol,
                         args.minFreq,
                         args.passOnly,
-                        args.merge)
+                        args.merge,
+                        args.database,
+                        args.query)
 
     print('Generating Vcf')
     newVcf.run()         
     
     return newVcf
 
+
 class VcfCreator:
-    def __init__(self,filename,alleles,variants,referenceFa,mode='w',sampleCol='barcode',minFreq=0.05,passOnly=False,mergeVars=False):
-        self.sampleCol = sampleCol
-        self.mergeVars = mergeVars
+    def __init__(self,filename,alleles,
+                 variants,referenceFa,
+                 mode='w',sampleCol='barcode',
+                 minFreq=0.05,passOnly=False,
+                 mergeVars=False,database=None,
+                 query=None,dataframe=False):
+        self.sampleCol   = sampleCol
+        self.mergeVars   = mergeVars
+        self.isDataframe = dataframe
         if passOnly:
-            self.alleles = self.openAlleles(alleles).query('clusterStatus == "passed"')
+            self.alleles = self.openAlleles(alleles,database,query).query('clusterStatus == "passed"')
         else:
-            self.alleles = self.openAlleles(alleles).query('cluster_freq >= @minFreq')
-        self.variants  = self.openVariants(variants)
+            self.alleles = self.openAlleles(alleles,database,query).query('cluster_freq >= @minFreq')
+        self.variants  = self.openVariants(variants,database,query)
         self.samples   = self.alleles[sampleCol].unique()
         self.filtInput = self.makeFilteredInput()
         self.filename  = filename
@@ -56,7 +65,7 @@ class VcfCreator:
     def makeFilteredInput(self):
         filtInput = self.alleles.join(self.variants).reset_index('POS')
         #check for empty variant set
-        if not len(filtInput):
+        if filtInput.empty:
             return filtInput.set_index('POS',append=True)
         #adjust deletion position to include prev base in ref
         #also duplicate ref call for shifted dels
@@ -69,18 +78,46 @@ class VcfCreator:
         filtInput['nsupport'] = filtInput.apply(lambda r:r[SUPPORTFIELD].get(r['VAR'],0),axis=1)
         return filtInput.set_index('POS',append=True)
 
-    def openAlleles(self,alleles):
+    def openAlleles(self,alleles,database=None,query=None):
         dtype = {'numreads':int}
-        return pd.read_csv(alleles,index_col=0,dtype=dtype)
+        if self.isDataframe:
+            return alleles
+        if database:
+            df = self.dbImport(database,alleles,query).set_index('uuid')
+            if df.empty:
+                raise Pbaa2Vcf_Error(f'No records returned for db "{database}" and query "{query}') 
+            for col,t in dtype.items():
+                df[col] = df[col].astype(t)
+            return df
+        else:
+            return pd.read_csv(alleles,index_col=0,dtype=dtype)
 
-    def openVariants(self, variants):
-        dtype = {'CHR':str,
-                 'POS':int}
-        df = pd.read_csv(variants,dtype=dtype)
+    def openVariants(self,variants,database=None,query=None):
+        if self.isDataframe:
+            return variants
+        if database:
+            df = self.dbImport(database,variants,query)      
+        else:
+            dtype = {'CHR':str,
+                     'POS':int}
+            df = pd.read_csv(variants,dtype=dtype)
         if SUPPORTFIELD in df.columns:
             df[SUPPORTFIELD] = df[SUPPORTFIELD].map(eval)
         return df.set_index(['uuid','CHR','POS'])
         
+    def dbImport(self,database,table,query):
+        import sqlalchemy as sqla
+        import sqlite3 
+        dbengine = sqla.create_engine(f'sqlite:///{database}', echo=False)
+        sql = f'SELECT * FROM {table}'
+        if query:
+            sql = f'{sql} WHERE uuid IN ({query})'
+        try:
+            return pd.read_sql(sql,con=dbengine)
+        except (sqla.exc.OperationalError,sqlite3.OperationalError) as e:
+            #raise Pbaa2Vcf_Error(f'Unable to access {table} in {database}')
+            raise Pbaa2Vcf_Error(f'Unable to execute query in {database}. DB error as follows:\n\n{e}')
+
     def makeHeader(self):
         header = pysam.VariantHeader()
 
@@ -174,16 +211,16 @@ class VcfCreator:
             merged = False
             if self.mergeVars:
                 grouped = calls.groupby('VAR',as_index=False)
-                if (grouped.size() > 1).any(): #some merging
+                if (grouped.size()['size'] > 1).any(): #some merging
                     calls = grouped.apply(self.mergeVar)\
                                    .reset_index(level=0,drop=True)
                     merged = True
-                
-            alleleMeta  = self.alleles.loc[calls.index.get_level_values('uuid')]\
+            
+            alleleMeta  = self.alleles.loc[calls.index.get_level_values('uuid')]
 
             suppCount   = calls[SUPPORTFIELD].map(Counter).sum()
             countMap    = {altFunc(v).get('alt',alleles[0]):suppCount[v]
-                           for v in ['.'] + calls.loc[alts.index.get_level_values('uuid')].VAR.to_list()
+                           for v in ['.'] + calls.reindex(alts.index.get_level_values('uuid'),level=0).VAR.to_list()
                            if v in suppCount}
 
             #Genotype
@@ -193,7 +230,7 @@ class VcfCreator:
                                    .alt.map(alleles.index))
             srec.phased = not merged 
             #total depth 
-            srec['DP'] = int(calls.numreads.sum())
+            srec['DP'] = int(calls.numreads.astype(int).sum())
             #pbaa avg_qual
             srec['AQ'] = list(alleleMeta.avg_quality) if not merged else None
             #allele depth
@@ -219,7 +256,7 @@ class VcfCreator:
         f = itemgetter(0)
         d = dat.reset_index()
         firsts = {c:f(d[c]) for c in ['uuid','CHR','POS','VAR']}
-        sums   = {c:d[c].sum() for c in ['numreads','nsupport']}
+        sums   = {c:d[c].astype(int).sum() for c in ['numreads','nsupport']}
         sums[SUPPORTFIELD] = dict(d[SUPPORTFIELD].map(Counter).sum())
         sums['guide'] = ';'.join(d.guide.unique())
         firsts.update(sums)
@@ -254,10 +291,10 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(prog='pbaa2vcf.py', description='Generate vcf file from pbAA results')
-    parser.add_argument('allelesCsv', metavar='alleles', type=str,
-                    help='Alleles csv from consensusVariants.py')
-    parser.add_argument('variantsCsv', metavar='variants', type=str,
-                    help='Variants csv from consensusVariants.py')
+    parser.add_argument('alleles', metavar='alleles', type=str,
+                    help='Alleles csv from consensusVariants.py OR name of alleles table in database.')
+    parser.add_argument('variants', metavar='variants', type=str,
+                    help='Variants csv from consensusVariants.py OR name of variants table in database')
     parser.add_argument('reference', metavar='reference', type=str,
                     help='Reference fasta (must be indexed)')
     parser.add_argument('-s','--sampleCol', dest='sampleCol', type=str, choices=['barcode','bioSample','runName'], default='barcode',
@@ -272,6 +309,10 @@ if __name__ == '__main__':
                     help=f'Export bcf compressed file [NOT IMPLEMENTED]. Default export uncompressed vcf')
     parser.add_argument('-m','--merge', dest='merge', action='store_true', default=False,
                     help=f'Merge same variants within sample [beta]. Default report all')
+    parser.add_argument('-d','--database', dest='database', type=str, default=None,
+                    help=f'Sqlite database file.  Default None (use csv inputs)')
+    parser.add_argument('-q','--query', dest='query', type=str, default=None,
+                    help=f'Custom sql query for input from database. Must return list of uuid values to select on alleles/variant table.  Default None (all records)')
 
     try:
         vcf = main(parser)

@@ -3,6 +3,8 @@ Coronavirus (SARS-Cov-2) sequencing analysis
 
 Last Updated: 05.03.2021 (v9.0.0)
 
+*NOTE*: This version of CoSA has only been tested with [pbaa](https://github.com/pacificbiosciences/pbaa) v0.1.3 and might not be compatible with pbaa versions above it
+
 [Stable version of CoSA under PacBio's GitHub](https://github.com/pacificbiosciences/CoSA)
 
 [Developing version of CoSA under Magdoll's GitHub](https://github.com/Magdoll/CoSA)
